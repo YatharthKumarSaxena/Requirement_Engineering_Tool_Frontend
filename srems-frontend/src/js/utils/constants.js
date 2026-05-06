@@ -33,6 +33,7 @@ export const API_CONFIG = {
     // SREMS RE Workflow - PLURAL FORMS TO MATCH BACKEND
     SCOPE: '/scope',
     HIGH_LEVEL_FEATURES: '/high-level-features',
+    IDEAS: '/ideas',                                // Backend: /ideas (PLURAL!)
     PRODUCT_VISION: '/product-vision',              // Backend: /product-vision (NO list endpoint)
     ELICITATION: '/elicitations',                   // Backend: /elicitations (PLURAL!)
     INCEPTION: '/inceptions',                       // Backend: /inceptions (PLURAL!)
