@@ -15,11 +15,12 @@ class RequirementsService {
   }
 
   /**
-   * Get requirements by elicitation
+   * Get requirements by project
+   * Backend: GET /projects/:projectId/requirements
    */
   async getRequirements(projectId, page = 1, pageSize = 10) {
     const response = await apiClient.get(
-      `${API_CONFIG.ENDPOINTS.REQUIREMENTS}/list?projectId=${projectId}&page=${page}&pageSize=${pageSize}`
+      `/projects/${projectId}/requirements?page=${page}&pageSize=${pageSize}`
     );
     
     // Check if response was successful
@@ -28,7 +29,7 @@ class RequirementsService {
     }
     
     // Return the data array
-    return response.data || [];
+    return Array.isArray(response.data) ? response.data : (response.data?.data?.requirements || []);
   }
 
   /**
