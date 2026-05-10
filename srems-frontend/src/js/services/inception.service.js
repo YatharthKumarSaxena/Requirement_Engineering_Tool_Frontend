@@ -27,15 +27,9 @@ class InceptionService {
    */
   async getInceptions(projectId, page = 1, pageSize = 10) {
     try {
-      // Validate projectId is provided and is a valid MongoDB ObjectId format
+      // Validate projectId is provided
       if (!projectId) {
         throw new Error('Project ID is required to fetch inceptions');
-      }
-
-      // MongoDB ObjectId regex: 24 hex characters
-      const mongoIdRegex = /^[a-f\d]{24}$/i;
-      if (!mongoIdRegex.test(projectId)) {
-        throw new Error('Invalid project ID format');
       }
 
       const response = await apiClient.get(
