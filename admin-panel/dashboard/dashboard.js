@@ -6,6 +6,25 @@
  */
 
 /**
+ * Debounce utility function
+ * Delays function execution until after wait time has elapsed without being called again
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Wait time in milliseconds
+ * @returns {Function} Debounced function
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+/**
  * Dashboard state object
  * Stores cached data from admin panel API
  * @type {Object}
