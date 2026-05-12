@@ -1,0 +1,217 @@
+<div class="page-container">
+  <div class="page-hero">
+    <div class="hero-content">
+      <h1 class="page-title">Ideas</h1>
+      <p class="page-description">Capture, review, and manage project ideas</p>
+    </div>
+    <div class="hero-actions">
+      <button class="btn btn-primary btn-lg" id="btnCreateIdea">
+        <span class="btn-icon">➕</span> Add New Idea
+      </button>
+    </div>
+  </div>
+
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <p class="metric-label">Total Ideas</p>
+      <div id="statTotal" class="metric-value">0</div>
+    </div>
+    <div class="metric-card">
+      <p class="metric-label">Accepted</p>
+      <div id="statAccepted" class="metric-value">0</div>
+    </div>
+    <div class="metric-card">
+      <p class="metric-label">Rejected</p>
+      <div id="statRejected" class="metric-value">0</div>
+    </div>
+    <div class="metric-card">
+      <p class="metric-label">Deferred</p>
+      <div id="statDeferred" class="metric-value">0</div>
+    </div>
+  </div>
+
+  <div class="filters-bar">
+    <div class="filter-group">
+      <label for="filterStatus" class="filter-label">Status</label>
+      <select id="filterStatus" class="filter-select">
+        <option value="">All Ideas</option>
+        <option value="DRAFT">Draft</option>
+        <option value="ACCEPTED">Accepted</option>
+        <option value="REJECTED">Rejected</option>
+        <option value="DEFERRED">Deferred</option>
+        <option value="REOPENED">Reopened</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="ideasContainer" class="cards-container">
+    <div class="loading-spinner">
+      <div class="loader"><div class="cell d-0"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-4"></div></div>
+      Loading ideas...
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit Idea Modal -->
+<div id="ideaModal" class="modal hidden">
+  <div class="modal-content modal-lg">
+    <div class="modal-header">
+      <h2 id="ideaModalTitle">Add New Idea</h2>
+      <button class="modal-close" data-close-modal="ideaModal">&times;</button>
+    </div>
+    <form id="ideaForm" class="form-stack">
+      <div class="form-group">
+        <label for="idea-title" class="form-label">Title <span class="required">*</span></label>
+        <input type="text" id="idea-title" class="form-control" maxlength="200" required />
+        <small class="form-hint">Brief title for the idea</small>
+      </div>
+
+      <div class="form-group">
+        <label for="idea-description" class="form-label">Description <span class="required">*</span></label>
+        <textarea id="idea-description" class="form-control" rows="5" maxlength="1000" required placeholder="Describe the idea in detail..."></textarea>
+        <small class="form-hint">Provide comprehensive details about the idea</small>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" data-close-modal="ideaModal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Idea</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Idea Detail View Modal -->
+<div id="ideaDetailModal" class="modal hidden">
+  <div class="modal-content modal-lg">
+    <div class="modal-header">
+      <h2 id="detailTitle">Idea Details</h2>
+      <button class="modal-close" data-close-modal="ideaDetailModal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-section">
+        <h4>Title</h4>
+        <p id="detailTitle2"></p>
+      </div>
+
+      <div class="detail-section">
+        <h4>Description</h4>
+        <p id="detailDescription" class="preserve-formatting"></p>
+      </div>
+
+      <div class="detail-section">
+        <h4>Status</h4>
+        <p><span id="detailStatus" class="badge"></span></p>
+      </div>
+
+      <div class="detail-section">
+        <h4>Created By</h4>
+        <p id="detailCreatedBy"></p>
+        <small id="detailCreatedAt" class="text-muted"></small>
+      </div>
+
+      <div id="rejectionSection" class="detail-section hidden">
+        <h4>Rejection Reason</h4>
+        <p id="detailRejectionReason"></p>
+        <p id="detailRejectionDescription"></p>
+      </div>
+
+      <div id="deferralSection" class="detail-section hidden">
+        <h4>Deferral Reason</h4>
+        <p id="detailDeferralReason"></p>
+        <p id="detailDeferralDescription"></p>
+      </div>
+
+      <div class="detail-actions">
+        <button class="btn btn-secondary" data-close-modal="ideaDetailModal">Close</button>
+        <button id="btnDetailEdit" class="btn btn-primary hidden">Edit</button>
+        <button id="btnDetailDelete" class="btn btn-outline-danger hidden">Delete</button>
+        <button id="btnDetailAccept" class="btn btn-success hidden">Accept</button>
+        <button id="btnDetailReject" class="btn btn-outline-danger hidden">Reject</button>
+        <button id="btnDetailDefer" class="btn btn-outline-warning hidden">Defer</button>
+        <button id="btnDetailReopen" class="btn btn-outline-primary hidden">Reopen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rejection Modal -->
+<div id="rejectionModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close-modal="rejectionModal">&times;</button>
+    <h3>Reject Idea</h3>
+    <form id="rejectionForm" class="modal-form">
+      <label for="rejectionReason" class="form-label">Rejection Reason <span class="required">*</span></label>
+      <select id="rejectionReason" class="form-control" required>
+        <option value="">Select reason</option>
+        <option value="OUT_OF_SCOPE">Out of Scope</option>
+        <option value="DUPLICATE">Duplicate</option>
+        <option value="BUSINESS_DECISION">Business Decision</option>
+        <option value="TECHNICAL_LIMITATION">Technical Limitation</option>
+        <option value="OTHER">Other</option>
+      </select>
+
+      <label for="rejectionDescription" class="form-label">Description (optional)</label>
+      <textarea id="rejectionDescription" class="form-control" rows="3" maxlength="500" placeholder="Explain the rejection..."></textarea>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-close-modal="rejectionModal">Cancel</button>
+        <button type="submit" class="btn btn-danger">Reject Idea</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Deferral Modal -->
+<div id="deferalModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close-modal="deferalModal">&times;</button>
+    <h3>Defer Idea</h3>
+    <form id="deferalForm" class="modal-form">
+      <label for="deferalReason" class="form-label">Deferral Reason <span class="required">*</span></label>
+      <select id="deferalReason" class="form-control" required>
+        <option value="">Select reason</option>
+        <option value="LOW_PRIORITY">Low Priority</option>
+        <option value="DEPENDENCY_ISSUE">Dependency Issue</option>
+        <option value="CLARIFICATION_NEEDED">Clarification Needed</option>
+        <option value="RESOURCE_CONSTRAINT">Resource Constraint</option>
+        <option value="OTHER">Other</option>
+      </select>
+
+      <label for="deferalDescription" class="form-label">Description (optional)</label>
+      <textarea id="deferalDescription" class="form-control" rows="3" maxlength="500" placeholder="Explain the deferral..."></textarea>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-close-modal="deferalModal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Defer Idea</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div id="deleteIdeaModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close-modal="deleteIdeaModal">&times;</button>
+    <h3>Delete Idea</h3>
+    <p>Are you sure you want to delete this idea? This action cannot be undone.</p>
+    <form id="deleteIdeaForm" class="modal-form">
+      <label for="ideaDeletionReasonType" class="form-label">Deletion Reason <span class="required">*</span></label>
+      <select id="ideaDeletionReasonType" class="form-control" required>
+        <option value="">Select reason</option>
+        <option value="duplicate_idea">Duplicate</option>
+        <option value="test_or_demo_idea_cleanup">Test / Demo Cleanup</option>
+        <option value="created_by_admin_mistake">Admin Error</option>
+        <option value="other">Other</option>
+      </select>
+
+      <label for="ideaDeletionReasonDescription" class="form-label">Description (optional)</label>
+      <textarea id="ideaDeletionReasonDescription" class="form-control" rows="2" maxlength="300" placeholder="Why are you deleting this idea?"></textarea>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-close-modal="deleteIdeaModal">Cancel</button>
+        <button type="submit" class="btn btn-danger">Delete Idea</button>
+      </div>
+    </form>
+  </div>
+</div>
+
