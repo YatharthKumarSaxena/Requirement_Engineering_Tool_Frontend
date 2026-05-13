@@ -7,6 +7,8 @@ import { store } from './store/store.js';
 import { showToast } from './utils/helpers.js';
 import { STORAGE_KEYS } from './utils/constants.js';
 
+// Dev: add startup log
+console.log("srems-frontend: app.js loaded");
 // ═══════════════════════════════════════════════════════════════════════════
 // DEVICE MANAGEMENT FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
