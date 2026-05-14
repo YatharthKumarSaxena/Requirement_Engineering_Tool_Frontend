@@ -27,6 +27,8 @@ class InceptionService {
    */
   async getInceptions(projectId, page = 1, pageSize = 10) {
     try {
+      // Dev: debug log when fetching inceptions
+      console.debug('InceptionService.getInceptions called', { projectId, page, pageSize });
       // Validate projectId is provided and is a valid MongoDB ObjectId format
       if (!projectId) {
         throw new Error('Project ID is required to fetch inceptions');
