@@ -276,6 +276,8 @@ class RequirementsService {
    */
   async getRequirements(projectId, page = 1, pageSize = 10) {
     await delay();
+    // Dev: lightweight fallback log for requirements fetch
+    console.warn('RequirementsService.getRequirements called', { projectId, page, pageSize });
     const normalizedProjectId = this._normalizeProjectId(projectId);
     let reqs = this._getStorage();
 
