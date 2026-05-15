@@ -476,3 +476,6 @@ export class InceptionPage {
     }
   }
 }
+
+// Dev: Inception page script loaded
+console.log('Inception page script loaded');
