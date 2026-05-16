@@ -16,6 +16,8 @@ class MeetingsPage {
     this.currentMeetingData = null;  // Store data between step 1 and step 2
     this.entityType = 'inceptions';  // Default entity type (PLURAL for backend)
     this.projectId = null;          // Will be loaded from store or localStorage
+    this.isSubmittingMeeting = false;  // ✅ Prevent duplicate form submission
+    window.meetingsPage = this;     // Required for inline onclick handlers in rendered HTML
     this.init();
   }
 
@@ -124,10 +126,19 @@ class MeetingsPage {
       });
     }
 
-    const typeFilter = document.getElementById('filterType');
-    if (typeFilter) {
-      typeFilter.addEventListener('change', () => {
+    const groupFilter = document.getElementById('filterGroup');
+    if (groupFilter) {
+      groupFilter.addEventListener('change', () => {
         this.filterMeetings();
+      });
+    }
+
+    const entityTypeFilter = document.getElementById('filterEntityType');
+    if (entityTypeFilter) {
+      entityTypeFilter.value = this.entityType;
+      entityTypeFilter.addEventListener('change', async (e) => {
+        this.entityType = e.target.value || 'inceptions';
+        await this.loadMeetings();
       });
     }
   }
@@ -187,15 +198,15 @@ class MeetingsPage {
   filterMeetings() {
     const search = document.getElementById('searchMeetings')?.value?.toLowerCase() || '';
     const statusFilter = document.getElementById('filterStatus')?.value || '';
-    const groupFilter = document.getElementById('filterType')?.value || '';
+    const groupFilter = document.getElementById('filterGroup')?.value || '';
 
     console.log('🔍 [filterMeetings] search:', search, 'status:', statusFilter, 'group:', groupFilter);
     console.log('📦 Total meetings:', this.meetings.length);
 
     this.filteredMeetings = this.meetings.filter(meeting => {
       const matchesSearch = !search || 
-        meeting.title.toLowerCase().includes(search) ||
-        (meeting.description?.toLowerCase().includes(search));
+        (meeting.title || '').toLowerCase().includes(search) ||
+        (meeting.description || '').toLowerCase().includes(search);
       
       const matchesStatus = !statusFilter || meeting.status === statusFilter;
       const matchesGroup = !groupFilter || meeting.meetingGroup === groupFilter;
@@ -231,81 +242,116 @@ class MeetingsPage {
     }
 
     container.innerHTML = this.filteredMeetings.map(meeting => `
-      <div class="meeting-card">
-        <div class="card-header">
-          <h3>${meeting.title}</h3>
-          <span class="badge badge-${meeting.status?.toLowerCase() || 'default'}">${meeting.status || 'DRAFT'}</span>
+      <div class="meeting-card premium-card">
+        <div class="card-header-enhanced">
+          <div class="card-title-section">
+            <h3 class="card-title">${meeting.title}</h3>
+            <span class="card-status-tag ${meeting.status?.toLowerCase() || 'draft'}">${meeting.status || 'DRAFT'}</span>
+          </div>
+          <div class="phase-badge">
+            ${meeting.meetingGroup || 'General'}
+          </div>
         </div>
-        <div class="card-body">
-          <div class="meeting-meta">
-            <div class="meta-item">
-              <span class="meta-label">📅 Scheduled:</span>
-              <span ${meeting.scheduledAt ? '' : 'style="opacity: 0.5;"'}>
-                ${meeting.scheduledAt ? new Date(meeting.scheduledAt).toLocaleString() : 'Not scheduled'}
+        <div class="card-body" style="padding: 0;">
+          <div class="card-details-grid">
+            <div class="detail-item">
+              <span class="detail-label">📅 Scheduled</span>
+              <span class="detail-value" ${meeting.scheduledAt ? '' : 'style="opacity: 0.5;"'}>
+                ${meeting.scheduledAt ? new Date(meeting.scheduledAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Not set'}
               </span>
             </div>
-            <div class="meta-item">
-              <span class="meta-label">🏷️ Group:</span>
-              <span>${meeting.meetingGroup || 'General'}</span>
+            <div class="detail-item">
+              <span class="detail-label">⏱️ Duration</span>
+              <span class="detail-value">${meeting.expectedDuration || 60} min</span>
             </div>
-            <div class="meta-item">
-              <span class="meta-label">⏱️ Duration:</span>
-              <span>${meeting.expectedDuration || 60} minutes</span>
+            <div class="detail-item">
+              <span class="detail-label">🌐 Platform</span>
+              <span class="detail-value">${meeting.platform || 'General'}</span>
             </div>
-            <div class="meta-item">
-              <span class="meta-label">🌐 Platform:</span>
-              <span>${meeting.platform || 'Google Meet'}</span>
+            <div class="detail-item">
+              <span class="detail-label">👥 Participants</span>
+              <span class="detail-value">${meeting.participants?.length || 0}</span>
             </div>
-            ${meeting.meetingLink ? `
-              <div class="meta-item">
-                <span class="meta-label">🔗 Link:</span>
-                <a href="${meeting.meetingLink}" target="_blank">${meeting.meetingLink}</a>
-              </div>
-            ` : ''}
-            ${meeting.description ? `
-              <div class="meta-item">
-                <span class="meta-label">📝 Description:</span>
-                <p>${meeting.description}</p>
-              </div>
-            ` : ''}
           </div>
           
-          ${meeting.participants && Array.isArray(meeting.participants) && meeting.participants.length > 0 ? `
-            <div class="participants-list">
-              <strong>👥 Participants (${meeting.participants.length}):</strong>
-              <div class="participant-tags">
-                ${meeting.participants.map(p => `
-                  <span class="participant-tag">${p.userId || p}</span>
-                `).join('')}
+          ${meeting.meetingLink ? `
+            <div class="card-meta-row" style="padding: 1rem 2rem; border-bottom: 1px solid rgba(226, 232, 240, 0.5);">
+              <div class="meta-item">
+                <span class="meta-icon">🔗</span>
+                <span class="meta-text"><a href="${meeting.meetingLink}" target="_blank" style="color: #0ea5e9; text-decoration: none; font-weight: 600;">Join Meeting</a></span>
               </div>
             </div>
           ` : ''}
+
+          ${meeting.description ? `
+            <div class="card-description" style="margin: 1rem 0; padding: 0 2rem;">
+              ${meeting.description}
+            </div>
+          ` : '<div style="margin-bottom: 1rem;"></div>'}
         </div>
-        <div class="card-footer">
-          <div class="action-buttons">
-            ${meeting.status === 'DRAFT' ? `
-              <button class="btn btn-sm btn-primary" onclick="window.meetingsPage.scheduleMeeting('${meeting._id}')">📅 Schedule</button>
-            ` : ''}
-            ${meeting.status === 'SCHEDULED' ? `
-              <button class="btn btn-sm btn-success" onclick="window.meetingsPage.startMeeting('${meeting._id}')">▶️ Start</button>
-            ` : ''}
-            ${meeting.status === 'ONGOING' ? `
-              <button class="btn btn-sm btn-info" onclick="window.meetingsPage.endMeeting('${meeting._id}')">⏹️ End</button>
-            ` : ''}
-            <button class="btn btn-sm btn-secondary" onclick="window.meetingsPage.editMeeting('${meeting._id}')">✏️ Edit</button>
-            ${meeting.status !== 'COMPLETED' && meeting.status !== 'CANCELLED' ? `
-              <button class="btn btn-sm btn-warning" onclick="window.meetingsPage.rescheduleMeeting('${meeting._id}')">🔄 Reschedule</button>
-            ` : ''}
-            ${meeting.status !== 'COMPLETED' && meeting.status !== 'CANCELLED' ? `
-              <button class="btn btn-sm btn-danger" onclick="window.meetingsPage.cancelMeeting('${meeting._id}')">❌ Cancel</button>
-            ` : ''}
-            ${meeting.status === 'COMPLETED' ? `
-              <button class="btn btn-sm btn-tertiary" onclick="window.meetingsPage.freezeMeeting('${meeting._id}')">❄️ Freeze</button>
-            ` : ''}
-          </div>
+        
+        <div class="card-actions-group">
+          ${meeting.status === 'DRAFT' ? `
+            <button class="btn-action" onclick="window.meetingsPage.scheduleMeeting('${meeting._id}')">
+              <span style="font-size: 1.2rem;">📅</span> Schedule
+            </button>
+            <button class="btn-action" onclick="window.meetingsPage.editMeeting('${meeting._id}')">
+              <span style="font-size: 1.2rem;">✏️</span> Edit
+            </button>
+          ` : ''}
+          ${meeting.status === 'SCHEDULED' ? `
+            <button class="btn-action" onclick="window.meetingsPage.startMeeting('${meeting._id}')" style="color: #059669; border-color: #34d399;">
+              <span style="font-size: 1.2rem;">▶️</span> Start
+            </button>
+            <button class="btn-action" onclick="window.meetingsPage.rescheduleMeeting('${meeting._id}')">
+              <span style="font-size: 1.2rem;">🔄</span> Reschedule
+            </button>
+          ` : ''}
+          ${meeting.status === 'ONGOING' ? `
+            <button class="btn-action" onclick="window.meetingsPage.endMeeting('${meeting._id}')" style="color: #ea580c; border-color: #fb923c;">
+              <span style="font-size: 1.2rem;">⏹️</span> End
+            </button>
+          ` : ''}
+          ${(meeting.status === 'DRAFT' || meeting.status === 'SCHEDULED') ? `
+            <button class="btn-action" onclick="window.meetingsPage.cancelMeeting('${meeting._id}')" style="color: #e11d48; border-color: #f43f5e;">
+              <span style="font-size: 1.2rem;">❌</span> Cancel
+            </button>
+          ` : ''}
+          ${(meeting.status === 'SCHEDULED' || meeting.status === 'ONGOING') ? `
+            <button class="btn-action" onclick="window.meetingsPage.freezeMeeting('${meeting._id}')" style="color: #0284c7; border-color: #38bdf8;">
+              <span style="font-size: 1.2rem;">❄️</span> Freeze
+            </button>
+          ` : ''}
         </div>
       </div>
     `).join('');
+
+    // ✅ NEW: Save Meeting ID to localStorage when clicked
+    document.querySelectorAll('.meeting-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        // Don't trigger on button clicks
+        if (e.target.closest('button')) return;
+
+        const titleEl = card.querySelector('h3');
+        const badgeEl = card.querySelector('.badge');
+        
+        // Find the meeting data from the rendered card
+        const title = titleEl?.textContent || 'Unknown Meeting';
+        const status = badgeEl?.textContent || 'DRAFT';
+        
+        // Find the corresponding meeting in our data to get the ID
+        const meeting = this.filteredMeetings.find(m => m.title === title);
+        if (meeting) {
+          localStorage.setItem('CURRENT_MEETING', meeting._id);
+          localStorage.setItem('CURRENT_MEETING_TITLE', meeting.title);
+          console.log(`✅ [Meetings] Saved: ${meeting.title} (ID: ${meeting._id.substring(0, 8)}...)`);
+          
+          // Highlight selected card
+          document.querySelectorAll('.meeting-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+        }
+      });
+    });
   }
 
   openCreateMeetingModal() {
@@ -435,9 +481,18 @@ class MeetingsPage {
 
   async handleScheduleMeetingSubmit() {
     try {
+      // ✅ Prevent duplicate submission
+      if (this.isSubmittingMeeting) {
+        console.warn('⚠️ Meeting submission already in progress - ignoring duplicate submission');
+        return;
+      }
+      this.isSubmittingMeeting = true;
+      console.log('🔒 Meeting submission lock enabled');
+
       if (!this.currentMeetingData) {
         alert('❌ Meeting data not found. Please start over.');
         this.closeScheduleMeetingModal();
+        this.isSubmittingMeeting = false;  // ✅ Release lock
         return;
       }
 
@@ -468,16 +523,46 @@ class MeetingsPage {
         this.projectId,
         this.currentMeetingData
       );
-      console.log('✅ Meeting created:', createResponse);
 
-      // Extract meetingId from response
-      // Service normalizes: { success, data: { meeting object } }
-      // After normalization in service, we access directly from data
-      const newMeetingId = createResponse.data?._id;
-      
-      if (!newMeetingId) {
-        console.error('❌ Cannot extract meeting ID. Full response:', createResponse);
-        throw new Error('Failed to extract meeting ID from response');
+      let newMeetingId = null;
+
+      if (createResponse?.success) {
+        const createdMeeting =
+          createResponse.data?.meeting ||
+          createResponse.data?.data?.meeting ||
+          createResponse.data?.data ||
+          createResponse.data;
+        newMeetingId = createdMeeting?._id || createdMeeting?.id || null;
+
+        if (!newMeetingId) {
+          console.error('❌ Cannot extract meeting ID. Full response:', createResponse);
+          throw new Error('Failed to extract meeting ID from response');
+        }
+
+        console.log('✅ Meeting created:', createResponse);
+      } else {
+        const createMessage = createResponse?.message || 'Failed to create meeting';
+        const isParallelConflict = createResponse?.status === 409 &&
+          createMessage.toLowerCase().includes('parallel meetings are disabled');
+
+        if (!isParallelConflict) {
+          throw new Error(createMessage);
+        }
+
+        // Fallback: reuse existing draft meeting when parallel meetings are disabled.
+        const existingMeetings = await meetingsService.listMeetings(this.entityType, this.projectId);
+        const draftMeeting = existingMeetings.find(m =>
+          m &&
+          (m.status === 'DRAFT' || !m.status) &&
+          !m.scheduledAt
+        );
+
+        if (!draftMeeting?._id) {
+          throw new Error('Parallel meetings are disabled. Please complete/cancel existing meeting first.');
+        }
+
+        newMeetingId = draftMeeting._id;
+        console.warn('⚠️ Using existing draft meeting due to parallel-meeting restriction:', newMeetingId);
       }
 
       console.log(`📌 New Meeting ID: ${newMeetingId}`);
@@ -495,12 +580,17 @@ class MeetingsPage {
         newMeetingId,
         scheduleData
       );
+
+      if (!scheduleResponse?.success) {
+        throw new Error(scheduleResponse?.message || 'Failed to schedule meeting');
+      }
+
       console.log('✅ Meeting scheduled:', scheduleResponse);
 
       // Success! Clear data and reload
       this.currentMeetingData = null;
       this.closeScheduleMeetingModal();
-      alert('✅ Meeting created and scheduled successfully!');
+      alert('✅ Meeting scheduled successfully!');
 
       // Reload meetings
       await this.loadMeetings();
@@ -508,6 +598,9 @@ class MeetingsPage {
     } catch (error) {
       console.error('❌ Failed in SCHEDULE step:', error);
       alert(`❌ Error: ${error.message}`);
+    } finally {
+      this.isSubmittingMeeting = false;  // ✅ Always release lock
+      console.log('🔓 Meeting submission lock released');
     }
   }
 
@@ -522,6 +615,12 @@ class MeetingsPage {
   }
 
   showRescheduleModal(meetingId) {
+    const meeting = this.meetings.find(m => m._id === meetingId);
+    if (!meeting) {
+      alert('Meeting not found');
+      return;
+    }
+
     // Get or create reschedule modal
     let modal = document.getElementById('rescheduleModal');
     if (!modal) {
@@ -549,8 +648,14 @@ class MeetingsPage {
                 <input type="text" id="newMeetingPassword" placeholder="Optional password">
               </div>
               <div class="form-group">
-                <label for="newExpectedDuration">Expected Duration (minutes)</label>
-                <input type="number" id="newExpectedDuration" min="15" max="480" value="60">
+                <label for="newPlatform">Platform</label>
+                <select id="newPlatform">
+                  <option value="">Keep Existing Platform</option>
+                  <option value="ZOOM">ZOOM</option>
+                  <option value="TEAMS">TEAMS</option>
+                  <option value="GOOGLE_MEET">GOOGLE_MEET</option>
+                  <option value="OTHER">OTHER</option>
+                </select>
               </div>
               <button type="submit" class="btn btn-primary">Reschedule</button>
               <button type="button" class="btn btn-secondary" id="cancelRescheduleBtn">Cancel</button>
@@ -561,28 +666,51 @@ class MeetingsPage {
       document.body.appendChild(modal);
     }
 
+    const toDateTimeLocal = (isoValue) => {
+      if (!isoValue) return '';
+      const d = new Date(isoValue);
+      if (Number.isNaN(d.getTime())) return '';
+      const pad = (num) => String(num).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
+    document.getElementById('rescheduledAt').value = toDateTimeLocal(meeting.scheduledAt);
+    document.getElementById('newMeetingLink').value = meeting.meetingLink || '';
+    document.getElementById('newMeetingPassword').value = meeting.meetingPassword || '';
+    document.getElementById('newPlatform').value = meeting.platform || '';
+
     // Setup event listeners
     modal.querySelector('#rescheduleForm').onsubmit = async (e) => {
       e.preventDefault();
       const scheduledAtEl = document.getElementById('rescheduledAt').value;
       const meetingLink = document.getElementById('newMeetingLink').value;
       const meetingPassword = document.getElementById('newMeetingPassword').value;
-      const expectedDuration = parseInt(document.getElementById('newExpectedDuration').value);
+      const platform = document.getElementById('newPlatform').value;
 
       if (!scheduledAtEl || !meetingLink) {
         alert('Date & Time and Meeting Link are required');
         return;
       }
 
+      const scheduledDate = new Date(scheduledAtEl);
+      if (Number.isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
+        alert('Please select a future date and time');
+        return;
+      }
+
       try {
         const rescheduleData = {
-          scheduledAt: new Date(scheduledAtEl).toISOString(),  // Convert to ISO format
+          scheduledAt: scheduledDate.toISOString(),
           meetingLink: meetingLink,
           ...(meetingPassword && { meetingPassword }),
-          ...(expectedDuration && { expectedDuration })
+          ...(platform && { platform })
         };
 
         const response = await meetingsService.rescheduleMeeting(this.entityType, meetingId, rescheduleData);
+        if (!response?.success) {
+          throw new Error(response?.message || 'Failed to reschedule meeting');
+        }
+
         console.log('✅ Meeting rescheduled:', response);
         alert('Meeting rescheduled successfully!');
         modal.classList.remove('show');
@@ -605,15 +733,29 @@ class MeetingsPage {
 
   async cancelMeeting(meetingId) {
     try {
-      const reason = prompt('Enter cancellation reason:');
+      const reasonOptions = Object.values(MEETING_CANCELLATION_REASONS).join(', ');
+      const reason = prompt(`Enter cancellation reason type (${reasonOptions}):`, 'OTHER');
       if (!reason) return;
 
+      const normalizedReason = reason.trim().toUpperCase();
+      if (!MEETING_CANCELLATION_REASONS[normalizedReason]) {
+        alert(`Invalid reason. Use one of: ${reasonOptions}`);
+        return;
+      }
+
+      const cancelDescription = prompt('Enter cancellation description (optional):') || '';
+
       const cancelData = {
-        cancelReason: reason  // CORRECTED: was 'reason', should be 'cancelReason'
+        cancelReason: normalizedReason,
+        ...(cancelDescription.trim() && { cancelDescription: cancelDescription.trim() })
       };
 
       // Pass entityType and meetingId
       const response = await meetingsService.cancelMeeting(this.entityType, meetingId, cancelData);
+      if (!response?.success) {
+        throw new Error(response?.message || 'Failed to cancel meeting');
+      }
+
       console.log('✅ Meeting cancelled:', response);
       alert('Meeting cancelled successfully!');
       await this.loadMeetings();
@@ -625,12 +767,12 @@ class MeetingsPage {
 
   async startMeeting(meetingId) {
     try {
-      const startData = {
-        startedAt: new Date().toISOString()
-      };
-
       // Pass entityType and meetingId
-      const response = await meetingsService.startMeeting(this.entityType, meetingId, startData);
+      const response = await meetingsService.startMeeting(this.entityType, meetingId, {});
+      if (!response?.success) {
+        throw new Error(response?.message || 'Failed to start meeting');
+      }
+
       console.log('✅ Meeting started:', response);
       alert('Meeting started successfully!');
       await this.loadMeetings();
@@ -642,16 +784,12 @@ class MeetingsPage {
 
   async endMeeting(meetingId) {
     try {
-      const notes = prompt('Enter meeting notes:');
-      if (!notes) return;
-
-      const endData = {
-        notes: notes,
-        endedAt: new Date().toISOString()
-      };
-
       // Pass entityType and meetingId
-      const response = await meetingsService.endMeeting(this.entityType, meetingId, endData);
+      const response = await meetingsService.endMeeting(this.entityType, meetingId, {});
+      if (!response?.success) {
+        throw new Error(response?.message || 'Failed to end meeting');
+      }
+
       console.log('✅ Meeting ended:', response);
       alert('Meeting ended successfully!');
       await this.loadMeetings();
@@ -663,15 +801,12 @@ class MeetingsPage {
 
   async freezeMeeting(meetingId) {
     try {
-      const freezeReason = prompt('Enter freeze reason:');
-      if (!freezeReason) return;
-
-      const freezeData = {
-        reason: freezeReason
-      };
-
       // Pass entityType and meetingId
-      const response = await meetingsService.freezeMeeting(this.entityType, meetingId, freezeData);
+      const response = await meetingsService.freezeMeeting(this.entityType, meetingId, {});
+      if (!response?.success) {
+        throw new Error(response?.message || 'Failed to freeze meeting');
+      }
+
       console.log('✅ Meeting frozen:', response);
       alert('Meeting frozen successfully!');
       await this.loadMeetings();
@@ -796,6 +931,10 @@ class MeetingsPage {
           };
 
           const response = await meetingsService.updateMeeting(this.entityType, meetingId, updateData);
+          if (!response?.success) {
+            throw new Error(response?.message || 'Failed to update meeting');
+          }
+
           console.log('✅ Meeting updated:', response);
           alert('Meeting updated successfully!');
           modal.classList.remove('show');
@@ -821,15 +960,25 @@ class MeetingsPage {
   }
 
   scheduleMeeting(meetingId) {
-    try {
-      const newDateTime = prompt('Enter date and time (YYYY-MM-DD HH:MM):');
-      if (newDateTime) {
-        this.rescheduleMeeting(meetingId);
-      }
-    } catch (error) {
-      console.error('Failed to schedule:', error);
-      alert('Failed to schedule meeting');
+    const meeting = this.meetings.find(m => m._id === meetingId);
+    if (!meeting) {
+      alert('Meeting not found');
+      return;
     }
+
+    if (meeting.status !== 'DRAFT') {
+      alert(`Only DRAFT meetings can be scheduled. Current status: ${meeting.status}`);
+      return;
+    }
+
+    this.currentMeetingData = {
+      title: meeting.title,
+      meetingGroup: meeting.meetingGroup,
+      platform: meeting.platform,
+      description: meeting.description || ''
+    };
+
+    this.openScheduleMeetingModal();
   }
 }
 
