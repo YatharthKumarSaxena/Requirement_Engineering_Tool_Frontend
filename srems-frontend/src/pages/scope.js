@@ -1,7 +1,40 @@
 import { scopeService } from '../js/services/scope.service.js';
 import { store } from '../js/store/store.js';
 import { showToast, showConfirmDialog, showModal, hideModal, debounce } from '../js/utils/helpers.js';
-import { validateFormData } from '../js/utils/config.js';
+import { validateFormData } from '../js/utils/helpers.js';
+
+const SCOPE_FORM_FIELDS = {
+  scopeTitle: {
+    id: 'scopeTitle',
+    label: 'Title',
+    required: true,
+    validation: (value) => {
+      const text = value?.trim() || '';
+      if (text.length < 3) return 'Title must be at least 3 characters';
+      if (text.length > 200) return 'Title cannot exceed 200 characters';
+      return null;
+    }
+  },
+  scopeType: {
+    id: 'scopeType',
+    label: 'Scope type',
+    type: 'select',
+    required: true,
+    options: ['included', 'excluded', 'constraint']
+  },
+  scopeDescription: {
+    id: 'scopeDescription',
+    label: 'Description',
+    required: false,
+    validation: (value) => {
+      const text = value?.trim() || '';
+      if (!text) return null;
+      if (text.length < 10) return 'Description must be at least 10 characters';
+      if (text.length > 2000) return 'Description cannot exceed 2000 characters';
+      return null;
+    }
+  }
+};
 
 export class ScopePage {
   constructor() {
@@ -58,9 +91,9 @@ export class ScopePage {
   }
 
   renderScope() {
-    const included = this.scopeItems.filter(s => s.type === 'included');
-    const excluded = this.scopeItems.filter(s => s.type === 'excluded');
-    const constraints = this.scopeItems.filter(s => s.type === 'constraint');
+    const included = this.scopeItems.filter(s => s.type === 'IN_SCOPE' || s.type === 'included');
+    const excluded = this.scopeItems.filter(s => s.type === 'OUT_SCOPE' || s.type === 'excluded');
+    const constraints = this.scopeItems.filter(s => s.type === 'CONSTRAINT' || s.type === 'constraint');
 
     this.renderSection('includedScope', included);
     this.renderSection('excludedScope', excluded);
@@ -74,28 +107,36 @@ export class ScopePage {
     if (!elem) return;
 
     if (items.length === 0) {
-      elem.innerHTML = '<div class="empty-placeholder">No items</div>';
+      elem.innerHTML = '<div class="empty-placeholder">No items yet</div>';
       return;
     }
 
-    elem.innerHTML = items.map(item => `
-      <div class="scope-item" data-id="${item._id}">
+    elem.innerHTML = items.map(item => {
+      const itemId = item._id || item.id || item.scopeId || '';
+      const title = item.title || item.description || 'Untitled Scope';
+      const description = item.description && item.description !== title ? item.description : '';
+      return `
+      <div class="scope-item premium-scope-card" data-id="${itemId}">
         <div class="item-header">
-          <h4 class="item-title">${item.description}</h4>
+          <div class="item-heading-block">
+            <h4 class="item-title">${title}</h4>
+            ${description ? `<p class="item-description">${description}</p>` : ''}
+          </div>
           <div class="item-actions">
-            <button class="btn-icon edit-item">✏️</button>
-            <button class="btn-icon delete-item">🗑️</button>
+            <button class="btn-icon edit-item" title="Edit Scope">✏️</button>
+            <button class="btn-icon delete-item" title="Delete Scope">🗑️</button>
           </div>
         </div>
-        ${item.rationale ? `<p class="item-rationale">${item.rationale}</p>` : ''}
-        ${item.estimatedImpact ? `<div class="item-impact impact-${item.estimatedImpact}">${item.estimatedImpact}</div>` : ''}
+        ${item.rationale ? `<div class="item-rationale"><strong>Rationale:</strong> ${item.rationale}</div>` : ''}
+        ${item.estimatedImpact ? `<div class="item-impact impact-${item.estimatedImpact?.toLowerCase()}">Impact: ${item.estimatedImpact}</div>` : ''}
       </div>
-    `).join('');
+    `;}).join('');
   }
 
   attachItemListeners() {
     document.querySelectorAll('.scope-item').forEach(item => {
       const id = item.dataset.id;
+      if (!id || id === 'undefined') return;
       item.querySelector('.edit-item')?.addEventListener('click', () => this.openEditModal(id));
       item.querySelector('.delete-item')?.addEventListener('click', () => this.deleteScopeItem(id));
     });
@@ -109,13 +150,17 @@ export class ScopePage {
   }
 
   openEditModal(id) {
-    const item = this.scopeItems.find(s => s._id === id);
+    const item = this.scopeItems.find(s => (s._id || s.id || s.scopeId) === id);
     if (!item) return;
 
     this.editingId = id;
     document.getElementById('scopeModalTitle').textContent = 'Edit Scope Item';
-    document.getElementById('scopeType').value = item.type;
-    document.getElementById('scopeDescription').value = item.description;
+    // Map backend enum to form value
+    const typeMapping = { 'IN_SCOPE': 'included', 'OUT_SCOPE': 'excluded', 'CONSTRAINT': 'constraint' };
+    const formValue = typeMapping[item.type] || item.type;
+    document.getElementById('scopeTitle').value = item.title || '';
+    document.getElementById('scopeType').value = formValue;
+    document.getElementById('scopeDescription').value = item.description || '';
     document.getElementById('scopeRationale').value = item.rationale || '';
     document.getElementById('scopeImpact').value = item.estimatedImpact || '';
 
@@ -126,29 +171,58 @@ export class ScopePage {
     event.preventDefault();
 
     const formData = {
-      type: document.getElementById('scopeType').value,
-      description: document.getElementById('scopeDescription').value,
-      rationale: document.getElementById('scopeRationale').value,
-      estimatedImpact: document.getElementById('scopeImpact').value,
+      scopeTitle: document.getElementById('scopeTitle').value,
+      scopeType: document.getElementById('scopeType').value,
+      scopeDescription: document.getElementById('scopeDescription').value,
     };
 
-    const errors = validateFormData(formData, 'scope');
-    if (errors.length > 0) {
-      errors.forEach(err => {
-        const el = document.getElementById(`error-${err.field}`);
-        if (el) el.textContent = err.message;
+    const validation = validateFormData(formData, SCOPE_FORM_FIELDS);
+    if (!validation.isValid) {
+      Object.entries(validation.errors).forEach(([field, message]) => {
+        const el = document.getElementById(`error-${field}`);
+        if (el) el.textContent = message;
       });
       return;
     }
 
+    // Map form values to backend enum values
+    const typeMapping = { 'included': 'IN_SCOPE', 'excluded': 'OUT_SCOPE', 'constraint': 'CONSTRAINT' };
+    const formType = formData.scopeType;
+
+    const payload = {
+      type: typeMapping[formType] || formType,
+      title: formData.scopeTitle.trim(),
+      description: formData.scopeDescription.trim() || null,
+    };
+
     try {
-      const projectId = store.getState().currentProject;
+      let projectId = store.state.projects.current?._id || 
+                     store.state.projects.current?.id || 
+                     store.state.projects.current;
+      
+      if (!projectId) {
+        const savedProject = localStorage.getItem('CURRENT_PROJECT');
+        if (savedProject) {
+          try {
+            const projectData = typeof savedProject === 'string' ? JSON.parse(savedProject) : savedProject;
+            projectId = projectData?._id || projectData?.id || projectData;
+            store.state.projects.current = projectData;
+          } catch (e) {
+            console.error('Failed to parse saved project:', e);
+          }
+        }
+      }
+      
+      if (!projectId) {
+        showToast('Project ID is required', 'error');
+        return;
+      }
       
       if (this.editingId) {
-        await scopeService.updateScope(this.editingId, formData);
+        await scopeService.updateScope(this.editingId, payload);
         showToast('Scope item updated', 'success');
       } else {
-        await scopeService.createScope(projectId, formData);
+        await scopeService.createScope(projectId, payload);
         showToast('Scope item created', 'success');
       }
 
@@ -163,11 +237,20 @@ export class ScopePage {
     const confirmed = await showConfirmDialog('Delete this scope item?');
     if (!confirmed) return;
 
+    if (!id || id === 'undefined') {
+      showToast('Scope ID is missing. Please reload the list and try again.', 'error');
+      return;
+    }
+
     try {
       await scopeService.deleteScope(id);
       showToast('Scope item deleted', 'success');
       await this.loadScope();
     } catch (error) {
+      if (error?.status === 404) {
+        showToast('Scope item not found. Reload the list and try again.', 'error');
+        return;
+      }
       showToast(error.message || 'Failed to delete', 'error');
     }
   }
