@@ -72,6 +72,12 @@ export class InceptionDetailPage {
       btnDelete.addEventListener('click', () => this.openDeleteModal());
     }
 
+    // Freeze button
+    const btnFreeze = document.getElementById('btnFreezeInception');
+    if (btnFreeze) {
+      btnFreeze.addEventListener('click', () => this.handleFreezeInception());
+    }
+
     // Form submissions
     document.getElementById('editInceptionForm')?.addEventListener('submit', (e) => this.handleEditInception(e));
     document.getElementById('deleteInceptionForm')?.addEventListener('submit', (e) => this.handleDeleteInception(e));
@@ -179,6 +185,26 @@ export class InceptionDetailPage {
     const infoDocStatus = document.getElementById('infoDocStatus');
     if (infoDocStatus) infoDocStatus.textContent = status;
 
+    // Handle Freeze button visibility
+    const btnFreeze = document.getElementById('btnFreezeInception');
+    if (btnFreeze) {
+      if (this.inception.isFrozen || this.inception.isDeleted) {
+        btnFreeze.style.display = 'none';
+      } else {
+        btnFreeze.style.display = 'inline-flex';
+      }
+    }
+    
+    // Handle Edit button visibility
+    const btnEdit = document.getElementById('btnEditInception');
+    if (btnEdit) {
+      if (this.inception.isFrozen || this.inception.isDeleted) {
+        btnEdit.style.display = 'none';
+      } else {
+        btnEdit.style.display = 'inline-flex';
+      }
+    }
+
     // Populate edit form with current values
     this.populateEditForm();
   }
@@ -263,6 +289,25 @@ export class InceptionDetailPage {
     } catch (error) {
       console.error('[InceptionDetail] Error deleting inception:', error);
       showToast(error.message || 'Failed to delete inception document', 'error');
+    }
+  }
+
+  async handleFreezeInception() {
+    const confirmed = await showConfirmDialog('Freeze Inception Phase', 'Are you sure you want to freeze this phase? This action cannot be undone and will lock the document from further edits.');
+    if (!confirmed) return;
+
+    try {
+      const response = await inceptionService.freezeInception(this.projectId);
+      if (!response.success) {
+        showToast(response.message || 'Failed to freeze inception phase', 'error');
+        return;
+      }
+
+      showToast('Inception phase frozen successfully. You can now create the Elicitation phase.', 'success');
+      await this.loadInception(); // Reload the data to update UI state
+    } catch (error) {
+      console.error('[InceptionDetail] Error freezing inception:', error);
+      showToast(error.message || 'Failed to freeze inception phase', 'error');
     }
   }
 }
