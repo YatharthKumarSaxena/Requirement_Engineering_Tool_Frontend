@@ -1,4 +1,4 @@
-import { showToast, debounce, showConfirmDialog } from '../js/utils/helpers.js';
+import { showToast, debounce, showConfirmDialog, showModal, hideModal } from '../js/utils/helpers.js';
 import elicitationService from '../js/services/elicitation.service.js';
 import { store } from '../js/store/store.js';
 
@@ -17,9 +17,21 @@ export class ElicitationPage {
   attachEventListeners() {
     document.getElementById('btnCreateElicitation')?.addEventListener('click', () => this.openCreateModal());
     document.getElementById('btnCreateElicitationEmpty')?.addEventListener('click', () => this.openCreateModal());
+    document.getElementById('btnFreezeElicitation')?.addEventListener('click', () => this.handleFreezeElicitation());
     
     document.getElementById('filterMethod')?.addEventListener('change', () => this.applyFilters());
     document.getElementById('searchElicitation')?.addEventListener('input', debounce(() => this.applyFilters(), 300));
+
+    // Modal close buttons
+    document.querySelectorAll('[data-close-modal]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const modalId = e.currentTarget.getAttribute('data-close-modal');
+        hideModal(modalId);
+      });
+    });
+
+    // Form submission
+    document.getElementById('createElicitationForm')?.addEventListener('submit', (e) => this.handleCreateElicitation(e));
   }
 
   async loadElicitations() {
@@ -58,12 +70,25 @@ export class ElicitationPage {
       console.log('🔍 Checking for existing elicitation...');
       const existingElicitation = await elicitationService.getLatestElicitation(currentProjectId);
       
+      const btnCreate = document.getElementById('btnCreateElicitation');
+      const btnFreeze = document.getElementById('btnFreezeElicitation');
+
       if (existingElicitation) {
         console.log('✅ Found existing elicitation:', existingElicitation);
         this.elicitations = [existingElicitation];
         this.filteredElicitations = [existingElicitation];
+        
+        // Hide create button, show freeze button if not already frozen
+        if (btnCreate) btnCreate.classList.add('hidden');
+        if (btnFreeze) {
+          if (!existingElicitation.isFrozen && !existingElicitation.isDeleted) {
+            btnFreeze.classList.remove('hidden');
+          } else {
+            btnFreeze.classList.add('hidden');
+          }
+        }
+
         this.renderElicitations();
-        showToast('Elicitation loaded successfully', 'success');
         return;
       }
 
@@ -71,6 +96,11 @@ export class ElicitationPage {
       console.log('ℹ️ No existing elicitation found');
       this.elicitations = [];
       this.filteredElicitations = [];
+      
+      // Show create button, hide freeze button
+      if (btnCreate) btnCreate.classList.remove('hidden');
+      if (btnFreeze) btnFreeze.classList.add('hidden');
+      
       this.showEmptyState();
       
     } catch (error) {
@@ -92,10 +122,12 @@ export class ElicitationPage {
     }
 
     this.filteredElicitations = this.elicitations.filter(item => {
-      const methodMatch = !method || item.method === method;
+      const mode = item.elicitationMode || item.mode || item.method;
+      const methodMatch = !method || mode === method;
       const searchMatch = !search || 
         item.id?.toLowerCase().includes(search) ||
-        item.stakeholder?.toLowerCase().includes(search);
+        String(item.allowParallelMeetings).toLowerCase().includes(search) ||
+        (item.meetingIds && JSON.stringify(item.meetingIds).toLowerCase().includes(search));
       return methodMatch && searchMatch;
     });
 
@@ -130,17 +162,18 @@ export class ElicitationPage {
       // Map backend fields to display fields
       const displayItem = {
         id: item._id || item.id,
-        method: item.method || 'N/A',
-        stakeholder: item.stakeholder || 'N/A',
+        createdBy: item.createdBy || 'N/A',
+        method: item.elicitationMode || item.mode || item.method || 'N/A',
+        parallelMeeting: item.allowParallelMeetings ? 'Yes' : 'No',
         date: createdDate,
         status: item.isFrozen ? 'Frozen' : (item.isDeleted ? 'Deleted' : 'Active')
       };
 
       return `
         <tr>
-          <td>${displayItem.id}</td>
+          <td>${displayItem.createdBy}</td>
           <td><span class="badge">${displayItem.method}</span></td>
-          <td>${displayItem.stakeholder}</td>
+          <td>${displayItem.parallelMeeting}</td>
           <td>${displayItem.date}</td>
           <td><span class="status-badge status-${displayItem.status.toLowerCase()}">${displayItem.status}</span></td>
           <td>
@@ -190,6 +223,76 @@ export class ElicitationPage {
   }
 
   openCreateModal() {
-    showToast('Create elicitation feature coming soon', 'info');
+    // Reset form
+    const form = document.getElementById('createElicitationForm');
+    if (form) form.reset();
+    
+    showModal('createElicitationModal');
+  }
+
+  async handleCreateElicitation(e) {
+    e.preventDefault();
+    
+    try {
+      const mode = document.getElementById('elicitationMode').value;
+      const allowParallelMeetings = document.getElementById('allowParallelMeetings').checked;
+
+      if (!mode) {
+        showToast('Please select an elicitation mode', 'error');
+        return;
+      }
+
+      let currentProjectId = store.state.projects.current?._id || 
+                             store.state.projects.current?.id || 
+                             store.state.projects.current;
+
+      const payload = {
+        projectId: currentProjectId,
+        mode: mode,
+        allowParallelMeetings: allowParallelMeetings
+      };
+
+      console.log('🚀 Creating Elicitation:', payload);
+
+      const response = await elicitationService.createElicitation(payload);
+
+      if (!response.success) {
+        showToast(response.message || 'Failed to create elicitation phase', 'error');
+        return;
+      }
+
+      showToast('Elicitation phase created successfully!', 'success');
+      hideModal('createElicitationModal');
+      
+      // Reload the data
+      await this.loadElicitations();
+
+    } catch (error) {
+      console.error('[Elicitation] Error creating elicitation:', error);
+      showToast(error.message || 'Failed to create elicitation', 'error');
+    }
+  }
+
+  async handleFreezeElicitation() {
+    const confirmed = await showConfirmDialog('Freeze Elicitation Phase', 'Are you sure you want to freeze this phase? This action cannot be undone and will lock the phase from further edits.');
+    if (!confirmed) return;
+
+    try {
+      let currentProjectId = store.state.projects.current?._id || 
+                             store.state.projects.current?.id || 
+                             store.state.projects.current;
+
+      const response = await elicitationService.freezeElicitation(currentProjectId);
+      if (!response.success) {
+        showToast(response.message || 'Failed to freeze elicitation phase', 'error');
+        return;
+      }
+
+      showToast('Elicitation phase frozen successfully. You can now proceed to Elaboration.', 'success');
+      await this.loadElicitations(); // Reload the data to update UI state
+    } catch (error) {
+      console.error('[Elicitation] Error freezing elicitation:', error);
+      showToast(error.message || 'Failed to freeze elicitation phase', 'error');
+    }
   }
 }
