@@ -4,9 +4,20 @@
       <h1 class="page-title">Negotiation & Prioritization</h1>
       <p class="page-subtitle">Stakeholder voting and priority negotiation</p>
     </div>
-    <button class="btn btn-primary" id="btnStartVoting">
-      <span class="btn-icon">🗳️</span> Start Voting
-    </button>
+    <div class="header-actions">
+      <button class="btn btn-outline-primary hidden" id="btnFreezeNegotiation">
+        <span>🧊</span> Freeze Phase
+      </button>
+      <button class="btn btn-outline-danger hidden" id="btnDeleteNegotiation">
+        <span>🗑️</span> Delete Phase
+      </button>
+      <button class="btn btn-primary" id="btnCreateNegotiation">
+        <span class="btn-icon">➕</span> Create Phase
+      </button>
+      <button class="btn btn-primary hidden" id="btnStartVoting">
+        <span class="btn-icon">🗳️</span> Start Voting
+      </button>
+    </div>
   </div>
 
   <!-- Voting Summary -->
@@ -52,7 +63,7 @@
   <!-- Requirements List for Voting -->
   <div id="votingContainer" class="voting-items">
     <div class="loading-spinner">
-      <div class="spinner"></div>
+      <div class="loader"><div class="cell d-0"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-4"></div></div>
       Loading requirements...
     </div>
   </div>
@@ -108,3 +119,30 @@
     </form>
   </div>
 </div>
+
+<!-- Delete Modal -->
+<div id="deleteNegotiationModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="modal-close" data-close-modal="deleteNegotiationModal">&times;</button>
+    <h3>Delete Negotiation Phase</h3>
+    <form id="deleteNegotiationForm" class="modal-form">
+      <label for="negDeletionReasonType" class="form-label">Deletion Reason <span class="required">*</span></label>
+      <select id="negDeletionReasonType" class="form-control" required>
+        <option value="">Select reason</option>
+        <option value="duplicate_phase">Duplicate</option>
+        <option value="test_or_demo_phase_cleanup">Test / Demo Cleanup</option>
+        <option value="created_by_admin_mistake">Admin Error</option>
+        <option value="other">Other</option>
+      </select>
+
+      <label for="negDeletionReasonDescription" class="form-label">Description (optional)</label>
+      <textarea id="negDeletionReasonDescription" class="form-control" rows="3" placeholder="Additional details..."></textarea>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-close-modal="deleteNegotiationModal">Cancel</button>
+        <button type="submit" class="btn btn-danger">Delete Negotiation</button>
+      </div>
+    </form>
+  </div>
+</div>
+
