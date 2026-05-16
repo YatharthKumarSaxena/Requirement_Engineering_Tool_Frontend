@@ -15,10 +15,9 @@
       <label for="filterVisionStatus" class="filter-label">Status</label>
       <select id="filterVisionStatus" class="filter-select">
         <option value="">All Status</option>
-        <option value="draft">Draft</option>
-        <option value="review">In Review</option>
-        <option value="published">Published</option>
-        <option value="archived">Archived</option>
+        <option value="active">Active</option>
+        <option value="frozen">Frozen</option>
+        <option value="deleted">Deleted</option>
       </select>
     </div>
     <div class="filter-group">
@@ -30,7 +29,7 @@
   <!-- Product Vision Cards -->
   <div id="productVisionContainer" class="cards-container">
     <div class="loading-spinner">
-      <div class="spinner"></div>
+      <div class="loader"><div class="cell d-0"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-4"></div></div>
       <p>Loading product vision documents...</p>
     </div>
   </div>
@@ -43,3 +42,4 @@
     <button class="btn btn-primary" id="btnCreateProductVisionEmpty">Create First Vision</button>
   </div>
 </div>
+
