@@ -32,7 +32,7 @@
       <h3 class="section-title included-title">Included in Scope</h3>
       <div id="includedScope" class="scope-items">
         <div class="loading-spinner">
-          <div class="spinner"></div>
+          <div class="loader"><div class="cell d-0"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-4"></div></div>
           Loading...
         </div>
       </div>
@@ -42,7 +42,7 @@
       <h3 class="section-title excluded-title">Excluded from Scope</h3>
       <div id="excludedScope" class="scope-items">
         <div class="loading-spinner">
-          <div class="spinner"></div>
+          <div class="loader"><div class="cell d-0"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-4"></div></div>
           Loading...
         </div>
       </div>
@@ -52,7 +52,7 @@
       <h3 class="section-title constraint-title">Constraints</h3>
       <div id="constraintScope" class="scope-items">
         <div class="loading-spinner">
-          <div class="spinner"></div>
+          <div class="loader"><div class="cell d-0"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-4"></div></div>
           Loading...
         </div>
       </div>
@@ -69,6 +69,12 @@
     </div>
     <form id="scopeForm" class="form-stack">
       <div class="form-group">
+        <label for="scopeTitle" class="form-label">Title *</label>
+        <input type="text" id="scopeTitle" class="form-control" required maxlength="200" placeholder="Enter scope title" />
+        <span class="form-error" id="error-scopeTitle"></span>
+      </div>
+
+      <div class="form-group">
         <label for="scopeType" class="form-label">Type *</label>
         <select id="scopeType" class="form-control" required>
           <option value="">Select Type</option>
@@ -80,8 +86,8 @@
       </div>
 
       <div class="form-group">
-        <label for="scopeDescription" class="form-label">Description *</label>
-        <textarea id="scopeDescription" class="form-control" rows="4" required maxlength="500"></textarea>
+        <label for="scopeDescription" class="form-label">Description</label>
+        <textarea id="scopeDescription" class="form-control" rows="4" maxlength="2000" placeholder="Describe the scope item"></textarea>
         <span class="form-error" id="error-scopeDescription"></span>
       </div>
 
@@ -108,3 +114,4 @@
     </form>
   </div>
 </div>
+
