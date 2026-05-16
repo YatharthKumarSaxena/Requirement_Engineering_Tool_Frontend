@@ -12,8 +12,40 @@
     </div>
   </div>
 
+  <!-- Meeting Info Banner -->
+  <div class="meeting-info-section">
+    <div class="info-banner">
+      <div class="banner-content">
+        <span class="banner-icon">📅</span>
+        <div class="banner-text">
+          <label>Current Meeting:</label>
+          <span id="currentMeetingDisplay">Loading...</span>
+        </div>
+        <button class="btn btn-sm btn-secondary" id="changeMeetingBtn" type="button" title="Change meeting manually">
+          Change Meeting
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Filters & Search -->
   <div class="filters-bar">
+    <div class="filter-group">
+      <label for="participantEntityType" class="filter-label">Entity Type</label>
+      <select id="participantEntityType" class="filter-select" title="Participant entity type">
+        <option value="inceptions">Inceptions</option>
+        <option value="elicitations">Elicitations</option>
+        <option value="elaborations">Elaborations</option>
+        <option value="negotiations">Negotiations</option>
+        <option value="specifications">Specifications</option>
+        <option value="validations">Validations</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="participantMeetingId" class="filter-label">Meeting ID</label>
+      <input type="text" id="participantMeetingId" class="filter-input" placeholder="Enter meeting ID" />
+      <button class="btn btn-secondary" id="btnLoadParticipants" type="button">Load</button>
+    </div>
     <div class="search-group">
       <input 
         type="text" 
@@ -23,7 +55,7 @@
       >
     </div>
     <div class="filter-group">
-      <select id="filterRole" class="filter-select">
+      <select id="filterRole" class="filter-select" title="Filter participants by role">
         <option value="">All Roles</option>
         <option value="STAKEHOLDER">Stakeholder</option>
         <option value="ANALYST">Analyst</option>
@@ -31,7 +63,7 @@
         <option value="MANAGER">Manager</option>
         <option value="OTHER">Other</option>
       </select>
-      <select id="filterStatus" class="filter-select">
+      <select id="filterStatus" class="filter-select" title="Filter participants by status">
         <option value="">All Status</option>
         <option value="ACTIVE">Active</option>
         <option value="INACTIVE">Inactive</option>
@@ -48,15 +80,14 @@
           <th>User ID</th>
           <th>User Name</th>
           <th>Role</th>
-          <th>Added Date</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody id="participantsBody">
         <tr class="placeholder-row">
-          <td colspan="5" style="text-align: center;">
+          <td colspan="4" class="text-center">
             <div class="loading-state">
-              <div class="spinner"></div>
+              <div class="loader"><div class="cell d-0"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-4"></div></div>
               <p>Loading participants...</p>
             </div>
           </td>
@@ -86,7 +117,7 @@
             title="Must start with 'USR' followed by numbers (e.g., USR1100000)"
             required
           >
-          <small style="display: block; margin-top: 5px; color: #666;">
+          <small class="block mt-xs text-muted">
             Enter existing user ID. Format: USR + digits (e.g., USR1100000)
           </small>
         </div>
@@ -99,7 +130,7 @@
             name="roleDescription" 
             placeholder="e.g., SCRIBE, FACILITATOR, PARTICIPANT"
           >
-          <small style="display: block; margin-top: 5px; color: #666;">
+          <small class="block mt-xs text-muted">
             Describe the participant's role in this meeting (e.g., SCRIBE, FACILITATOR, PARTICIPANT)
           </small>
         </div>
@@ -112,3 +143,83 @@
     </div>
   </div>
 </div>
+
+<style>
+  .meeting-info-section {
+    margin: 20px 0 30px 0;
+  }
+
+  .info-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .banner-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .banner-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .banner-text {
+    flex: 1;
+    min-width: 250px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .banner-text label {
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .banner-text span {
+    font-family: 'Courier New', monospace;
+    background: rgba(255, 255, 255, 0.25);
+    padding: 4px 12px;
+    border-radius: 4px;
+    word-break: break-word;
+  }
+
+  #changeMeetingBtn {
+    background: white !important;
+    color: #667eea !important;
+    border: none;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  #changeMeetingBtn:hover {
+    background: #f0f0f0 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  @media (max-width: 768px) {
+    .banner-content {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .banner-text {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    #changeMeetingBtn {
+      width: 100%;
+    }
+  }
+</style>
+
