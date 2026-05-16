@@ -9,9 +9,10 @@ import { API_CONFIG } from '../utils/constants.js';
 class ScopeService {
   /**
    * Create scope item
+   * Backend: POST /scope/create/:projectId
    */
-  async createScope(scopeData) {
-    return apiClient.post(`${API_CONFIG.ENDPOINTS.SCOPE}/create`, scopeData);
+  async createScope(projectId, scopeData) {
+    return apiClient.post(`${API_CONFIG.ENDPOINTS.SCOPE}/create/${projectId}`, scopeData);
   }
 
   /**
@@ -25,8 +26,9 @@ class ScopeService {
       throw new Error(response.message || 'Failed to fetch scopes');
     }
     
-    // Return the data array
-    return response.data || [];
+    // Backend returns { data: { scopes: [...], pagination: {...} } }
+    // ApiClient wraps it, so we access: response.data.data.scopes
+    return response.data?.data?.scopes || [];
   }
 
   /**
