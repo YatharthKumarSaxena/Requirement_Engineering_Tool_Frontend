@@ -6,25 +6,6 @@
  */
 
 /**
- * Debounce utility function
- * Delays function execution until after wait time has elapsed without being called again
- * @param {Function} func - Function to debounce
- * @param {number} wait - Wait time in milliseconds
- * @returns {Function} Debounced function
- */
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
-/**
  * Dashboard state object
  * Stores cached data from admin panel API
  * @type {Object}
@@ -48,7 +29,7 @@ const operationState = {
   activeOperations: new Map(), // Track operations by section
   lastLoadTime: {},
   loadingTimeouts: new Map(),
-  
+
   /**
    * Add operation to queue
    * @param {string} operationType - Type of operation (load, create, update, delete)
@@ -57,20 +38,20 @@ const operationState = {
    */
   async executeOperation(operationType, section, operation) {
     const operationId = `${section}-${operationType}-${Date.now()}`;
-    
+
     // Check if section is already processing
     if (this.activeOperations.has(section)) {
       console.warn(`⏳ Operation already in progress for ${section}, queuing...`);
       this.operationQueue.push({ operationId, section, operation });
       return;
     }
-    
+
     try {
       this.activeOperations.set(section, operationId);
       console.log(`🔄 Starting ${operationType} operation for ${section}`);
-      
+
       const result = await operation();
-      
+
       console.log(`✅ Completed ${operationType} operation for ${section}`);
       return result;
     } catch (error) {
@@ -78,7 +59,7 @@ const operationState = {
       throw error;
     } finally {
       this.activeOperations.delete(section);
-      
+
       // Process next queued operation
       const nextOp = this.operationQueue.shift();
       if (nextOp) {
@@ -86,7 +67,7 @@ const operationState = {
       }
     }
   },
-  
+
   /**
    * Mark section as loading with visual feedback
    */
@@ -98,7 +79,7 @@ const operationState = {
       loadingEl.style.pointerEvents = 'none';
     }
   },
-  
+
   /**
    * Remove loading state
    */
@@ -110,7 +91,7 @@ const operationState = {
       loadingEl.style.pointerEvents = 'auto';
     }
   },
-  
+
   /**
    * Check if data needs refresh (cache invalidation)
    */
@@ -118,7 +99,7 @@ const operationState = {
     const lastLoad = this.lastLoadTime[section] || 0;
     return (Date.now() - lastLoad) > maxAgeMs;
   },
-  
+
   /**
    * Update last load time for section
    */
@@ -135,31 +116,31 @@ const operationState = {
  */
 function checkAdminAuth() {
   const token = localStorage.getItem('adminAuthToken') || localStorage.getItem('accessToken');
-  
+
   // Only token is required - adminData is optional (may not exist when redirecting from Project)
   if (!token) {
     console.warn('🔓 No authentication token found');
     return null;
   }
-  
+
   // Try to get admin data, fallback to basic admin object if not available
   let adminData = localStorage.getItem('adminData');
   if (!adminData) {
     // When coming from Project, adminData won't exist initially
     // Create a minimal admin object from token for seamless integration
     console.log('ℹ️ Admin data not in localStorage - Will be loaded from API on demand');
-    return { 
+    return {
       email: 'Admin',
       fullName: 'Admin User'
     };
   }
-  
+
   try {
     return JSON.parse(adminData);
   } catch (e) {
     console.error('❌ Invalid admin data in localStorage:', e);
     // Return fallback even if JSON parse fails - ensures dashboard doesn't break
-    return { 
+    return {
       email: 'Admin',
       fullName: 'Admin User'
     };
@@ -172,22 +153,22 @@ function checkAdminAuth() {
  */
 function logoutAdmin() {
   console.log('🚪 Logging out admin completely...');
-  
+
   // Clear ALL admin-related data
   localStorage.removeItem('adminAuthToken');
   localStorage.removeItem('adminRefreshToken');
   localStorage.removeItem('adminData');
-  
+
   // NOTE: Keep accessToken and deviceUUID for potential future Project dashboard login
   // This allows seamless return to Project dashboard
-  
+
   // Show success message
   showNotification('✓ Logged out successfully. Redirecting...', 'success', 1500);
-  
+
   // Redirect to Project login page after short delay
   setTimeout(() => {
     // Redirect to Project index/login page - complete logout
-    window.location.href = 'http://127.0.0.1:5500/project/index.html';
+    window.location.href = 'http://127.0.0.1:5500/PROJECT/project/auth/login.html';
   }, 1000);
 }
 
@@ -240,7 +221,13 @@ window.addEventListener('load', async () => {
   setupButtonListeners();
 
   // Load initial dashboard data
-  loadDashboardData();
+  // If URL has a hash for a page (e.g. #admins), navigate there; otherwise load dashboard
+  const hashPage = (window.location.hash || '').replace('#', '');
+  if (hashPage) {
+    navigateToPage(hashPage);
+  } else {
+    loadDashboardData();
+  }
 });
 
 // Navigation
@@ -342,7 +329,7 @@ function setupLogout() {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
       const confirmed = confirm('Are you sure you want to logout?');
-      
+
       if (confirmed) {
         try {
           console.log('📡 Calling backend logout API...');
@@ -352,7 +339,7 @@ function setupLogout() {
           console.warn('⚠️ Backend logout failed (continuing with local logout):', error.message);
           // Continue with logout even if backend call fails
         }
-        
+
         // Perform local logout and redirect
         logoutAdmin();
       }
@@ -369,7 +356,7 @@ function setupBackButton() {
   if (backBtn) {
     backBtn.addEventListener('click', () => {
       console.log('🔙 Returning to Project dashboard...');
-      window.location.href = 'http://127.0.0.1:5500/project/app/dashboard.html';
+      window.location.href = 'http://127.0.0.1:5500/PROJECT/project/app/dashboard.html';
     });
   }
 }
@@ -378,12 +365,44 @@ function setupBackButton() {
 async function loadDashboardData() {
   try {
     console.log('📋 Dashboard initializing - Listing endpoints not available on backend');
-    
-    // Set placeholder stats - backend doesn't provide listing endpoints
-    document.getElementById('totalAdmins').textContent = '-';
-    document.getElementById('totalUsers').textContent = '-';
-    document.getElementById('totalOrgs').textContent = '-';
-    document.getElementById('totalDevices').textContent = '-';
+
+    // Attempt to fetch counts from backend list endpoints (graceful fallback to dash placeholders)
+    try {
+      const [adminsRes, usersRes, orgsRes, devicesRes] = await Promise.allSettled([
+        API.getAdmins(1, 1),
+        API.getUsers(1, 1),
+        API.getOrganizations(1, 1),
+        API.getDevices(1, 1)
+      ]);
+
+      const getTotal = (res) => {
+        if (!res) return '-';
+        if (res.status === 'rejected') return '-';
+        const val = res.value;
+        if (!val) return '-';
+        if (val.pagination && typeof val.pagination.totalCount !== 'undefined') return val.pagination.totalCount;
+        if (val.pagination && typeof val.pagination.total !== 'undefined') return val.pagination.total;
+        if (typeof val.total !== 'undefined') return val.total;
+        if (typeof val.totalCount !== 'undefined') return val.totalCount;
+        if (Array.isArray(val)) return val.length;
+        if (val.data && Array.isArray(val.data)) return val.data.length;
+        if (val.admins && Array.isArray(val.admins)) return val.admins.length;
+        if (val.users && Array.isArray(val.users)) return val.users.length;
+        if (val.organizations && Array.isArray(val.organizations)) return val.organizations.length;
+        return '-';
+      };
+
+      document.getElementById('totalAdmins').textContent = getTotal(adminsRes);
+      document.getElementById('totalUsers').textContent = getTotal(usersRes);
+      document.getElementById('totalOrgs').textContent = getTotal(orgsRes);
+      document.getElementById('totalDevices').textContent = getTotal(devicesRes);
+    } catch (err) {
+      console.warn('Failed to fetch dashboard counts:', err);
+      document.getElementById('totalAdmins').textContent = '-';
+      document.getElementById('totalUsers').textContent = '-';
+      document.getElementById('totalOrgs').textContent = '-';
+      document.getElementById('totalDevices').textContent = '-';
+    }
 
     // Load recent activities
     await loadRecentActivities();
@@ -400,13 +419,27 @@ async function loadDashboardData() {
 async function loadRecentActivities() {
   try {
     const activityList = document.getElementById('recentActivityList');
-    const activities = await API.listActivities(1, 5);
-    
+    const response = await API.listActivities(1, 5);
+    const activities = Array.isArray(response) ? response : (response?.data || response?.activities || []);
+
     if (activities && activities.length > 0) {
       activityList.innerHTML = activities.map(a => `
-        <div class="activity-item" style="padding: 10px; border-bottom: 1px solid #eee;">
-          <div style="font-weight: 600; color: #333;">${a.action || 'Action'}</div>
-          <div style="font-size: 12px; color: #666;">${formatDate(a.timestamp || a.createdAt)}</div>
+        <div class="activity-item" style="padding: 12px 15px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: flex-start; transition: background-color 0.2s; border-radius: 6px; margin-bottom: 5px;">
+          <div style="background: #e6f2ff; color: #0066cc; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0; font-weight: bold; font-size: 14px;">
+            <i class="fas fa-bolt"></i>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: 600; color: #2c3e50; font-size: 14px; margin-bottom: 4px;">
+              ${(a.eventType || 'System Event').replace(/_/g, ' ')}
+            </div>
+            <div style="font-size: 13px; color: #5a6c7d; margin-bottom: 6px;">
+              ${a.description || 'Action performed successfully'}
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #95a5a6;">
+              <span><i class="fas fa-user" style="margin-right: 4px;"></i> ${a.adminId || a.performedBy || 'System'}</span>
+              <span><i class="far fa-clock" style="margin-right: 4px;"></i> ${formatDate(a.timestamp || a.createdAt)}</span>
+            </div>
+          </div>
         </div>
       `).join('');
     } else {
@@ -422,24 +455,23 @@ async function loadRecentActivities() {
 async function loadAdminsData() {
   try {
     const adminsList = document.getElementById('adminsList');
-    
-    console.log('✅ Admin Page Ready - Use "Add Admin" button to create');
-    adminsList.innerHTML = `
-      <tr>
-        <td colspan="6" style="padding: 30px; text-align: center;">
-          <div style="background: #f0f7ff; padding: 25px; border-radius: 8px; border-left: 4px solid #0066cc;">
-            <p style="margin: 0 0 15px 0; font-weight: 600; font-size: 16px; color: #333;">Admin Management Interface</p>
-            <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">📋 Available Operations:</p>
-            <div style="text-align: left; display: inline-block; background: white; padding: 15px; border-radius: 6px;">
-              <p style="margin: 5px 0;">✅ <strong>Create Admin</strong> - Click "Add Admin" button above</p>
-              <p style="margin: 5px 0;">✅ <strong>Block Admin</strong> - Use action buttons when admins are listed</p>
-              <p style="margin: 5px 0;">✅ <strong>Unblock Admin</strong> - Use action buttons when admins are listed</p>
-            </div>
-          </div>
-        </td>
-      </tr>`;
+    adminsList.innerHTML = `<tr><td colspan="6" style="padding:20px; text-align:center;">Loading admins...</td></tr>`;
+    console.log('✅ Loading admins from backend');
+    const result = await API.getAdmins(1, 50);
+
+    // API client may return { data: [...] } or array directly or { admins: [...] }
+    const admins = result && result.admins ? result.admins : (result && result.data ? result.data : (Array.isArray(result) ? result : []));
+
+    if (!admins || admins.length === 0) {
+      adminsList.innerHTML = `<tr><td colspan="6" style="padding:30px; text-align:center;">No admins found</td></tr>`;
+      return;
+    }
+
+    displayAdmins(admins);
   } catch (error) {
     console.error('Failed to load admins:', error);
+    const adminsList = document.getElementById('adminsList');
+    if (adminsList) adminsList.innerHTML = `<tr><td colspan="6" style="padding:30px; text-align:center;">Unable to load admins</td></tr>`;
     showNotification('Error loading admin page', 'error');
   }
 }
@@ -450,16 +482,15 @@ function displayAdmins(admins) {
     .map(
       (admin) => `
     <tr>
-      <td>${admin.email}</td>
-      <td>${admin.fullName}</td>
-      <td>${admin.role}</td>
+      <td>${admin.email || admin.adminId || 'N/A'}</td>
+      <td>${admin.fullName || admin.firstName || 'N/A'}</td>
+      <td>${admin.role || admin.adminType || 'Internal Admin'}</td>
       <td>${getStatusBadge(admin.isBlocked ? 'blocked' : 'active')}</td>
       <td>${formatDate(admin.createdAt)}</td>
       <td>
-        ${
-          admin.isBlocked
-            ? `<button class="btn btn-sm btn-secondary" onclick="unblockAdmin('${admin._id}')">Unblock</button>`
-            : `<button class="btn btn-sm btn-danger" onclick="blockAdmin('${admin._id}')">Block</button>`
+        ${admin.isBlocked
+          ? `<button class="btn btn-sm btn-secondary" onclick="unblockAdmin('${admin.adminId || admin._id}')">Unblock</button>`
+          : `<button class="btn btn-sm btn-danger" onclick="blockAdmin('${admin.adminId || admin._id}')">Block</button>`
         }
       </td>
     </tr>
@@ -471,9 +502,9 @@ function displayAdmins(admins) {
 async function blockAdmin(adminId) {
   const blockReason = prompt('Select block reason:\nOptions: admin_action, security_threat, policy_violation, suspicious_activity, other\n\nEnter reason:');
   if (!blockReason) return;
-  
+
   const reasonDescription = prompt('Enter additional description (optional):');
-  
+
   try {
     await API.blockAdmin(adminId, blockReason, reasonDescription || '');
     showNotification('Admin blocked successfully', 'success');
@@ -487,9 +518,9 @@ async function blockAdmin(adminId) {
 async function unblockAdmin(adminId) {
   const unblockReason = prompt('Select unblock reason:\nOptions: admin_action, manual_review, appeal_granted, error_correction, other\n\nEnter reason:');
   if (!unblockReason) return;
-  
+
   const reasonDescription = prompt('Enter additional description (optional):');
-  
+
   try {
     await API.unblockAdmin(adminId, unblockReason, reasonDescription || '');
     showNotification('Admin unblocked successfully', 'success');
@@ -516,29 +547,21 @@ async function deleteAdmin(adminId) {
 async function loadUsersData() {
   try {
     const usersList = document.getElementById('usersList');
-    
-    console.log('✅ User Management - Block/Unblock Interface');
-    usersList.innerHTML = `
-      <tr>
-        <td colspan="7" style="padding: 30px; text-align: center;">
-          <div style="background: #f0f7ff; padding: 25px; border-radius: 8px; border-left: 4px solid #0066cc;">
-            <p style="margin: 0 0 15px 0; font-weight: 600; font-size: 16px; color: #333;">User Management</p>
-            <p style="margin: 0 0 15px 0; color: #666;">Enter User ID to manage user access</p>
-            <div style="background: white; padding: 20px; border-radius: 6px; display: inline-block;">
-              <div style="margin-bottom: 10px;">
-                <input type="text" id="userIdInput" placeholder="Enter User ID (e.g., USR0000001)" 
-                  style="width: 300px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
-              </div>
-              <div>
-                <button onclick="blockUserAction()" class="btn btn-danger" style="padding: 10px 20px; margin-right: 10px;">🚫 Block User</button>
-                <button onclick="unblockUserAction()" class="btn btn-success" style="padding: 10px 20px; background: #48bb78; color: white; border: none; border-radius: 4px; cursor: pointer;">✅ Unblock User</button>
-              </div>
-            </div>
-          </div>
-        </td>
-      </tr>`;
+    usersList.innerHTML = `<tr><td colspan="7" style="padding:20px; text-align:center;">Loading users...</td></tr>`;
+    console.log('✅ Loading users from backend');
+    const result = await API.getUsers(1, 50);
+    const users = result && result.entities ? result.entities : (result && result.users ? result.users : (result && result.data ? result.data : (Array.isArray(result) ? result : [])));
+
+    if (!users || users.length === 0) {
+      usersList.innerHTML = `<tr><td colspan="7" style="padding:30px; text-align:center;">No users found</td></tr>`;
+      return;
+    }
+
+    displayUsers(users);
   } catch (error) {
     console.error('Failed to load users:', error);
+    const usersList = document.getElementById('usersList');
+    if (usersList) usersList.innerHTML = `<tr><td colspan="7" style="padding:30px; text-align:center;">Unable to load users</td></tr>`;
     showNotification('Error loading user page', 'error');
   }
 }
@@ -549,14 +572,14 @@ async function blockUserAction() {
     showNotification('Please enter User ID', 'error');
     return;
   }
-  
+
   const blockReason = prompt('Select block reason:\nOptions: policy_violation, spam_activity, harassment, fraudulent_behavior, suspicious_login, other\n\nEnter reason:');
   if (!blockReason) return;
-  
+
   const reasonDescription = prompt('Enter additional description (optional):');
-  
+
   if (!confirm('Are you sure you want to block this user?')) return;
-  
+
   try {
     await API.blockUser(userId, blockReason, reasonDescription || '');
     showNotification('✓ User blocked successfully', 'success');
@@ -572,14 +595,14 @@ async function unblockUserAction() {
     showNotification('Please enter User ID', 'error');
     return;
   }
-  
+
   const unblockReason = prompt('Select unblock reason:\nOptions: manual_review_passed, user_appeal_granted, system_error, mistake, other\n\nEnter reason:');
   if (!unblockReason) return;
-  
+
   const reasonDescription = prompt('Enter additional description (optional):');
-  
+
   if (!confirm('Are you sure you want to unblock this user?')) return;
-  
+
   try {
     await API.unblockUser(userId, unblockReason, reasonDescription || '');
     showNotification('✓ User unblocked successfully', 'success');
@@ -595,17 +618,16 @@ function displayUsers(users) {
     .map(
       (user) => `
     <tr>
-      <td>${user.email}</td>
-      <td>${user.fullName}</td>
+      <td>${user.email || user.userId || 'N/A'}</td>
+      <td>${user.fullName || user.firstName || 'N/A'}</td>
       <td>${user.phone || '-'}</td>
       <td>${getStatusBadge(user.isBlocked ? 'blocked' : 'active')}</td>
       <td>${user.emailVerified ? '✅' : '❌'}</td>
       <td>${formatDate(user.createdAt)}</td>
       <td>
-        ${
-          user.isBlocked
-            ? `<button class="btn btn-sm btn-secondary" onclick="unblockUser('${user._id}')">Unblock</button>`
-            : `<button class="btn btn-sm btn-danger" onclick="blockUser('${user._id}')">Block</button>`
+        ${user.isBlocked
+          ? `<button class="btn btn-sm btn-secondary" onclick="unblockUser('${user.userId || user._id}')">Unblock</button>`
+          : `<button class="btn btn-sm btn-danger" onclick="blockUser('${user.userId || user._id}')">Block</button>`
         }
       </td>
     </tr>
@@ -644,7 +666,7 @@ async function loadOrganizationsData() {
     const orgsList = document.getElementById('organizationsList');
     console.log('📡 Fetching organizations from backend...');
     const response = await API.getOrganizations(1, 10);
-    
+
     // Handle response structure - could be array or wrapped in data field
     const organizations = Array.isArray(response) ? response : (response?.data || response?.organizations || []);
 
@@ -665,14 +687,43 @@ async function loadOrganizationsData() {
 async function loadDevicesData() {
   try {
     const devicesList = document.getElementById('devicesList');
-    
-    console.log('✅ Device Management - Block/Unblock Interface');
+    devicesList.innerHTML = `<tr><td colspan="7" style="padding:20px; text-align:center;">Loading devices...</td></tr>`;
+    console.log('✅ Attempting to load devices list from backend');
+
+    try {
+      const res = await API.getDevices(1, 50);
+      const devices = res && res.data ? res.data : (Array.isArray(res) ? res : []);
+
+      if (devices && devices.length > 0) {
+        // Render devices table rows
+        devicesList.innerHTML = devices.map(d => `
+          <tr>
+            <td>${d.deviceUUID || d.uuid || d.id || '-'}</td>
+            <td>${d.userEmail || d.ownerEmail || '-'}</td>
+            <td>${d.platform || d.os || '-'}</td>
+            <td>${d.isBlocked ? 'Blocked' : 'Active'}</td>
+            <td>${formatDate(d.createdAt || d.registeredAt)}</td>
+            <td>
+              ${d.isBlocked ? `<button class="btn btn-sm btn-secondary" onclick="unblockDevice('${d.deviceUUID || d.uuid || ''}')">Unblock</button>` : `<button class="btn btn-sm btn-danger" onclick="blockDevice('${d.deviceUUID || d.uuid || ''}')">Block</button>`}
+            </td>
+          </tr>
+        `).join('');
+        return;
+      }
+
+      // If no devices returned, show block/unblock input UI as fallback
+    } catch (err) {
+      console.warn('Devices list not provided by backend or error occurred:', err.message);
+      // continue to render fallback UI below
+    }
+
+    // Fallback UI: block/unblock by UUID (backend supports these operations)
     devicesList.innerHTML = `
       <tr>
         <td colspan="7" style="padding: 30px; text-align: center;">
           <div style="background: #f0f7ff; padding: 25px; border-radius: 8px; border-left: 4px solid #0066cc;">
             <p style="margin: 0 0 15px 0; font-weight: 600; font-size: 16px; color: #333;">Device Management</p>
-            <p style="margin: 0 0 15px 0; color: #666;">Enter Device UUID to manage device access</p>
+            <p style="margin: 0 0 10px 0; color: #666;">Device listing not available — use UUID to block/unblock</p>
             <div style="background: white; padding: 20px; border-radius: 6px; display: inline-block;">
               <div style="margin-bottom: 10px;">
                 <input type="text" id="deviceUuidInput" placeholder="Enter Device UUID (e.g., 550e8400-e29b-41d4-a716-446655440000)" 
@@ -698,9 +749,9 @@ async function blockDeviceAction() {
     showNotification('Please enter Device UUID', 'error');
     return;
   }
-  
+
   if (!confirm('Are you sure you want to block this device?')) return;
-  
+
   try {
     await API.blockDevice(deviceUUID, 'Admin blocked', 'Blocked via admin panel');
     showNotification('✓ Device blocked successfully', 'success');
@@ -716,9 +767,9 @@ async function unblockDeviceAction() {
     showNotification('Please enter Device UUID', 'error');
     return;
   }
-  
+
   if (!confirm('Are you sure you want to unblock this device?')) return;
-  
+
   try {
     await API.unblockDevice(deviceUUID, 'Admin unblocked', 'Unblocked via admin panel');
     showNotification('✓ Device unblocked successfully', 'success');
@@ -734,9 +785,9 @@ async function loadActivitiesData() {
     const activitiesList = document.getElementById('activitiesList');
     console.log('📡 Fetching all activities from backend...');
     operationState.startLoading('activities');
-    
+
     const activities = await API.listActivities(1, 20);
-    
+
     operationState.stopLoading('activities');
 
     if (!activities || activities.length === 0) {
@@ -763,7 +814,7 @@ async function loadActivitiesData() {
 
 function displayActivities(activities) {
   const activitiesList = document.getElementById('activitiesList');
-  
+
   activitiesList.innerHTML = activities
     .map(
       (activity) => `
@@ -786,7 +837,7 @@ function showActivityDetails(activityId) {
     const performedOn = activity.adminActions?.performedOn || 'System Event';
     const targetId = activity.adminActions?.targetId || '-';
     const reason = activity.adminActions?.reason || 'N/A';
-    
+
     alert(`
 Activity Details:
 Admin: ${activity.adminId}
@@ -898,7 +949,7 @@ function filterActivities() {
 
   const filtered = dashboardData.activities.filter((activity) => {
     const matchesSearch =
-      activity.eventType.toLowerCase().includes(searchTerm) || 
+      activity.eventType.toLowerCase().includes(searchTerm) ||
       activity.adminId.toLowerCase().includes(searchTerm) ||
       activity.description.toLowerCase().includes(searchTerm);
     const matchesType = !typeFilter || activity.eventType === typeFilter;
@@ -930,12 +981,12 @@ function getStatusBadge(status) {
 function formatDate(dateString) {
   try {
     const date = new Date(dateString);
-    const options = { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    const options = {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     };
     return date.toLocaleDateString('en-US', options);
   } catch (e) {
@@ -955,7 +1006,7 @@ function displayOrganizations(orgs) {
       (org, index) => {
         // Use _id, id, or organizationId - fallback to index
         const orgId = org._id || org.id || org.organizationId || index;
-        
+
         return `
     <tr>
       <td>${org.organizationName}</td>
@@ -968,10 +1019,9 @@ function displayOrganizations(orgs) {
         <div style="display: flex; gap: 4px; flex-wrap: nowrap; align-items: center; justify-content: flex-start;">
           <button class="btn btn-sm btn-info" style="padding: 5px 10px; font-size: 12px; white-space: nowrap;" onclick="openUpdateOrgModal('${orgId}')">Edit</button>
           <button class="btn btn-sm btn-success" style="padding: 5px 10px; font-size: 12px; white-space: nowrap;" onclick="openAddOrgUserModal('${orgId}')">Add</button>
-          ${
-            org.isActive === false
-              ? `<button class="btn btn-sm btn-secondary" style="padding: 5px 10px; font-size: 12px; white-space: nowrap;" onclick="enableOrganization('${orgId}')">On</button>`
-              : `<button class="btn btn-sm btn-danger" style="padding: 5px 10px; font-size: 12px; white-space: nowrap;" onclick="disableOrganization('${orgId}')">Off</button>`
+          ${org.isActive === false
+            ? `<button class="btn btn-sm btn-secondary" style="padding: 5px 10px; font-size: 12px; white-space: nowrap;" onclick="enableOrganization('${orgId}')">On</button>`
+            : `<button class="btn btn-sm btn-danger" style="padding: 5px 10px; font-size: 12px; white-space: nowrap;" onclick="disableOrganization('${orgId}')">Off</button>`
           }
           <button class="btn btn-sm btn-danger" style="padding: 5px 10px; font-size: 12px; white-space: nowrap;" onclick="confirmDeleteOrganization('${orgId}')">Del</button>
         </div>
@@ -985,14 +1035,14 @@ function displayOrganizations(orgs) {
 
 async function disableOrganization(orgId) {
   if (!confirmAction('Are you sure you want to disable this organization?')) return;
-  
+
   const reason = prompt('Please provide the reason for disabling this organization:\n\nOptions:\n- policy_violation\n- suspended_for_review\n- inactivity\n- compliance_issue\n- unauthorized_activity\n- admin_request\n- temporary_suspension\n- other\n\nEnter reason:')?.trim();
-  
+
   if (!reason) {
     showNotification('Reason is required', 'error');
     return;
   }
-  
+
   try {
     await API.disableOrganization(orgId, reason);
     showNotification('Organization disabled successfully', 'success');
@@ -1005,14 +1055,14 @@ async function disableOrganization(orgId) {
 
 async function enableOrganization(orgId) {
   if (!confirmAction('Are you sure you want to enable this organization?')) return;
-  
+
   const reason = prompt('Please provide the reason for enabling this organization:\n\nOptions:\n- review_completed\n- suspension_period_ended\n- issue_resolved\n- appeal_approved\n- compliance_verified\n- admin_decision\n- other\n\nEnter reason:')?.trim();
-  
+
   if (!reason) {
     showNotification('Reason is required', 'error');
     return;
   }
-  
+
   try {
     await API.enableOrganization(orgId, reason);
     showNotification('Organization enabled successfully', 'success');
@@ -1027,18 +1077,18 @@ async function enableOrganization(orgId) {
 function openUpdateOrgModal(orgId) {
   // Find the organization from stored data
   const orgData = currentOrganizations.find(o => (o._id || o.id || o.organizationId) === orgId);
-  
+
   if (!orgData) {
     showNotification('Organization not found', 'error');
     return;
   }
-  
+
   // FIRST: Reset the form to clear any old data
   document.getElementById('updateOrgForm').reset();
-  
+
   // Store the org ID for submission
   document.getElementById('updateOrgForm').dataset.orgId = orgId;
-  
+
   // Populate form with existing data
   document.getElementById('updateOrgName').value = orgData.organizationName || '';
   document.getElementById('updateOrgType').value = orgData.organizationType || orgData.orgType || '';
@@ -1047,13 +1097,13 @@ function openUpdateOrgModal(orgId) {
   document.getElementById('updateOrgContactEmail').value = orgData.contactEmail || '';
   document.getElementById('updateOrgContactCountryCode').value = orgData.contactCountryCode || '';
   document.getElementById('updateOrgContactLocalNumber').value = orgData.contactLocalNumber || '';
-  
+
   // DEFAULT: Set Update Reason to empty (user must select)
   document.getElementById('updateOrgReason').value = '';
   document.getElementById('updateOrgReasonDescription').value = '';
-  
+
   console.log('✏️ Edit modal opened for org:', orgId, 'Org Data:', orgData);
-  
+
   document.getElementById('updateOrgModal').style.display = 'flex';
 }
 
@@ -1071,12 +1121,12 @@ function confirmDeleteOrganization(orgId) {
 
 async function deleteOrganization(orgId) {
   const reason = prompt('Please provide the reason for deleting this organization:\n\nOptions:\n- out_of_business\n- merger\n- acquisition\n- reorganization\n- admin_request\n- other\n\nEnter reason:')?.trim();
-  
+
   if (!reason) {
     showNotification('Reason is required', 'error');
     return;
   }
-  
+
   try {
     await API.deleteOrganization(orgId, reason);
     showNotification('Organization deleted successfully', 'success');
@@ -1091,7 +1141,7 @@ async function deleteOrganization(orgId) {
 function displayDevices(devices) {
   const devicesList = document.getElementById('devicesList');
   if (!devicesList) return;
-  
+
   devicesList.innerHTML = devices
     .map(
       (device) => `
@@ -1113,9 +1163,9 @@ function displayDevices(devices) {
 async function blockDevice(deviceUUID) {
   const blockReason = prompt('Select block reason:\nOptions: suspicious_activity, compromised_device, unauthorized_access, security_threat, user_requested, malware_detected, other\n\nEnter reason:');
   if (!blockReason) return;
-  
+
   const reasonDescription = prompt('Enter additional description (optional):');
-  
+
   try {
     await API.blockDevice(deviceUUID, blockReason, reasonDescription || '');
     showNotification('Device blocked successfully', 'success');
@@ -1129,9 +1179,9 @@ async function blockDevice(deviceUUID) {
 async function unblockDevice(deviceUUID) {
   const unblockReason = prompt('Select unblock reason:\nOptions: verified_safe, user_verified, false_positive, device_secured, user_requested, security_check_passed, other\n\nEnter reason:');
   if (!unblockReason) return;
-  
+
   const reasonDescription = prompt('Enter additional description (optional):');
-  
+
   try {
     await API.unblockDevice(deviceUUID, unblockReason, reasonDescription || '');
     showNotification('Device unblocked successfully', 'success');
@@ -1180,7 +1230,7 @@ function setupButtonListeners() {
   if (adminForm) {
     adminForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const firstName = document.getElementById('adminFirstName').value.trim();
       const email = document.getElementById('adminEmail').value.trim();
       const password = document.getElementById('adminPassword').value;
@@ -1211,7 +1261,7 @@ function setupButtonListeners() {
         return;
       }
 
-      
+
       const adminData = {
         firstName: firstName,
         email: email,
@@ -1236,7 +1286,7 @@ function setupButtonListeners() {
   if (orgForm) {
     orgForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const orgName = document.getElementById('orgName').value.trim();
       const orgType = document.getElementById('orgType').value;
       const description = document.getElementById('orgDescription').value.trim();
@@ -1288,10 +1338,10 @@ function setupButtonListeners() {
     updateOrgForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       console.log('🔄 Update Organization Form Submitted');
-      
+
       const orgId = e.target.dataset.orgId;
       console.log('📋 Organization ID:', orgId);
-      
+
       if (!orgId) {
         showNotification('Organization ID not found', 'error');
         return;
@@ -1324,7 +1374,7 @@ function setupButtonListeners() {
 
       const countryCode = document.getElementById('updateOrgContactCountryCode').value.trim();
       const localNumber = document.getElementById('updateOrgContactLocalNumber').value.trim();
-      
+
       // Both must be provided together if either is provided
       if (countryCode || localNumber) {
         if (!countryCode || !localNumber) {
@@ -1374,7 +1424,7 @@ function setupButtonListeners() {
   if (clientForm) {
     clientForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const firstName = document.getElementById('clientFirstName').value.trim();
       const email = document.getElementById('clientEmail').value.trim();
       const password = document.getElementById('clientPassword').value;
@@ -1427,7 +1477,7 @@ function setupButtonListeners() {
       if (reasonDescription) clientData.reasonDescription = reasonDescription;
       if (countryCode) clientData.countryCode = countryCode;
       if (localNumber) clientData.localNumber = localNumber;
-      
+
       // Parse organization IDs
       if (orgIdsInput) {
         clientData.orgIds = orgIdsInput.split(',').map(id => id.trim()).filter(id => id);
@@ -1443,7 +1493,7 @@ function setupButtonListeners() {
   if (convertUserForm) {
     convertUserForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const userId = document.getElementById('convertUserId').value.trim();
       const convertReason = document.getElementById('convertReason').value;
       const role = document.getElementById('convertRole').value;
@@ -1456,7 +1506,7 @@ function setupButtonListeners() {
         return;
       }
 
-      const organizationIds = orgIdsInput 
+      const organizationIds = orgIdsInput
         ? orgIdsInput.split(',').map(id => id.trim()).filter(id => id)
         : [];
 
@@ -1482,7 +1532,7 @@ function setupButtonListeners() {
   if (addOrgUserForm) {
     addOrgUserForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const orgId = document.getElementById('addOrgUserOrgId').value.trim();
       const userId = document.getElementById('addOrgUserUserId').value.trim();
       const role = document.getElementById('addOrgUserRole').value.trim();
@@ -1588,7 +1638,7 @@ window.addEventListener('click', (e) => {
   const convertUserModal = document.getElementById('convertUserModal');
   const updateOrgModal = document.getElementById('updateOrgModal');
   const orgUsersListModal = document.getElementById('orgUsersListModal');
-  
+
   if (e.target === adminModal) closeAdminModal();
   if (e.target === orgModal) closeOrgModal();
   if (e.target === clientModal) closeClientModal();
@@ -1605,7 +1655,7 @@ async function createNewAdmin(adminData) {
     loadAdminsData();
   } catch (error) {
     console.error('❌ Error creating admin:', error);
-    
+
     // Check for authorization errors
     const errorMsg = error.message.toLowerCase();
     if (errorMsg.includes('authorization') || errorMsg.includes('permission') || errorMsg.includes('restricted')) {
@@ -1662,9 +1712,9 @@ async function viewAdminActivitiesAction(adminId, reason, reasonDescription = ''
 async function addUserToOrganization(orgId) {
   const userId = prompt('Enter user ID:');
   if (!userId) return;
-  
+
   if (!confirmAction('Are you sure you want to add this user to the organization?')) return;
-  
+
   try {
     await API.addUserToOrganization(orgId, userId);
     showNotification('User added to organization successfully', 'success');
@@ -1677,7 +1727,7 @@ async function addUserToOrganization(orgId) {
 
 async function removeUserFromOrganization(orgId, userId) {
   if (!confirmAction('Are you sure you want to remove this user from the organization?')) return;
-  
+
   try {
     await API.removeUserFromOrganization(orgId, userId);
     showNotification('User removed from organization successfully', 'success');
@@ -1692,7 +1742,7 @@ async function listOrgUsers(orgId) {
   try {
     const users = await API.listOrgUsers(orgId);
     const usersList = users.data || users || [];
-    
+
     let display = `<table class="data-table" style="width: 100%; margin-top: 10px;">
       <thead>
         <tr>
@@ -1704,7 +1754,7 @@ async function listOrgUsers(orgId) {
         </tr>
       </thead>
       <tbody>`;
-    
+
     if (usersList.length === 0) {
       display += `<tr><td colspan="5" style="text-align: center; padding: 20px;">No users found in this organization</td></tr>`;
     } else {
@@ -1715,18 +1765,18 @@ async function listOrgUsers(orgId) {
           <td>${user.role || '-'}</td>
           <td>${getStatusBadge(user.isDisabled ? 'disabled' : 'active')}</td>
           <td>
-            ${user.isDisabled ? 
-              `<button class="btn btn-sm btn-secondary" onclick="enableOrgUser('${user._id}')">Enable</button>` :
-              `<button class="btn btn-sm btn-warning" onclick="disableOrgUser('${user._id}')">Disable</button>`
-            }
+            ${user.isDisabled ?
+            `<button class="btn btn-sm btn-secondary" onclick="enableOrgUser('${user._id}')">Enable</button>` :
+            `<button class="btn btn-sm btn-warning" onclick="disableOrgUser('${user._id}')">Disable</button>`
+          }
             <button class="btn btn-sm btn-danger" onclick="removeUserFromOrganization('${orgId}', '${user._id}')">Remove</button>
           </td>
         </tr>`;
       });
     }
-    
+
     display += `</tbody></table>`;
-    
+
     // Use modal instead of alert
     document.getElementById('orgUsersListContainer').innerHTML = display;
     document.getElementById('orgUsersListModal').style.display = 'flex';
@@ -1743,7 +1793,7 @@ function closeOrgUsersListModal() {
 
 async function disableOrgUser(orgUserId) {
   if (!confirmAction('Are you sure you want to disable this organization user?')) return;
-  
+
   try {
     await API.disableOrgUser(orgUserId);
     showNotification('Organization user disabled successfully', 'success');
@@ -1756,7 +1806,7 @@ async function disableOrgUser(orgUserId) {
 
 async function enableOrgUser(orgUserId) {
   if (!confirmAction('Are you sure you want to enable this organization user?')) return;
-  
+
   try {
     await API.enableOrgUser(orgUserId);
     showNotification('Organization user enabled successfully', 'success');
@@ -1866,7 +1916,7 @@ function closeOrgUserReqModal() {
 function openAddOrgUserModal(orgId = null) {
   // Reset form first
   document.getElementById('addOrgUserForm').reset();
-  
+
   // Auto-populate org ID if provided
   if (orgId) {
     document.getElementById('addOrgUserOrgId').value = orgId;
@@ -1874,7 +1924,7 @@ function openAddOrgUserModal(orgId = null) {
   } else {
     console.warn('⚠️ No organization ID provided');
   }
-  
+
   document.getElementById('addOrgUserModal').classList.add('show');
 }
 
@@ -1886,7 +1936,7 @@ function closeAddOrgUserModal() {
 // FORM SUBMISSION HANDLERS
 async function handleClientConversionReqSubmit(e) {
   e.preventDefault();
-  
+
   try {
     const userId = document.getElementById('convReqUserId').value;
     const requestType = document.getElementById('convReqRequestType').value;
@@ -1897,7 +1947,7 @@ async function handleClientConversionReqSubmit(e) {
     const organizations = [];
     const existingOrgId = document.querySelector('.existingOrgId')?.value;
     const existingOrgEmail = document.querySelector('.existingOrgEmail')?.value;
-    
+
     if (existingOrgId && existingOrgEmail) {
       organizations.push({
         organizationId: existingOrgId,
@@ -1912,7 +1962,7 @@ async function handleClientConversionReqSubmit(e) {
     const newOrgName = document.querySelector('.newOrgName')?.value;
     const newOrgWebsite = document.querySelector('.newOrgWebsite')?.value;
     const newOrgEmail = document.querySelector('.newOrgEmail')?.value;
-    
+
     if (newOrgName && newOrgWebsite && newOrgEmail) {
       newOrganizations.push({
         organizationName: newOrgName,
@@ -1990,7 +2040,7 @@ async function loadClientConversionRequests() {
     const result = await API.listClientConversionRequests(1, 20);
     dashboardData.clientConversionRequests = result.data || result || [];
     displayClientConversionRequests(dashboardData.clientConversionRequests);
-    
+
     // Show disabled message if empty
     if (dashboardData.clientConversionRequests.length === 0) {
       const container = document.getElementById('clientConversionRequestsContent');
