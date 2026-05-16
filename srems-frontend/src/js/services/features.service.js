@@ -9,11 +9,20 @@ import { API_CONFIG } from '../utils/constants.js';
 class FeaturesService {
   /**
    * Create high-level feature
+   * Backend: POST /high-level-features/create/:projectId
+   * Backend only supports: title, description, linkedIdeaId
    */
-  async createFeature(featureData) {
+  async createFeature(projectId, featureData) {
+    // Only send backend-supported fields
+    const payload = {
+      title: featureData.title || featureData.name,
+      description: featureData.description,
+      linkedIdeaId: featureData.linkedIdeaId || null
+    };
+    
     return apiClient.post(
-      `${API_CONFIG.ENDPOINTS.HIGH_LEVEL_FEATURES}/create/${featureData.projectId}`,
-      featureData
+      `${API_CONFIG.ENDPOINTS.HIGH_LEVEL_FEATURES}/create/${projectId}`,
+      payload
     );
   }
 
@@ -30,8 +39,13 @@ class FeaturesService {
       throw new Error(response.message || 'Failed to fetch features');
     }
     
-    // Return the data array
-    return response.data || [];
+    // Backend returns { data: { hlfs: [...], pagination: {...} } }
+    // ApiClient wraps it, so we access: response.data.data.hlfs
+    return (response.data?.data?.hlfs || []).map((feature) => ({
+      ...feature,
+      id: feature.hlfId || feature._id || feature.id,
+      _id: feature._id || feature.hlfId || feature.id,
+    }));
   }
 
   /**
@@ -45,20 +59,29 @@ class FeaturesService {
 
   /**
    * Update feature
+   * Backend only supports: title, description, linkedIdeaId
    */
   async updateFeature(featureId, updateData) {
+    // Only send backend-supported fields
+    const payload = {
+      title: updateData.title || updateData.name,
+      description: updateData.description,
+      linkedIdeaId: updateData.linkedIdeaId || null
+    };
+    
     return apiClient.patch(
       `${API_CONFIG.ENDPOINTS.HIGH_LEVEL_FEATURES}/update/${featureId}`,
-      updateData
+      payload
     );
   }
 
   /**
    * Delete feature
    */
-  async deleteFeature(featureId) {
+  async deleteFeature(featureId, deletionReasonDescription = 'Deleted from frontend') {
     return apiClient.delete(
-      `${API_CONFIG.ENDPOINTS.HIGH_LEVEL_FEATURES}/delete/${featureId}`
+      `${API_CONFIG.ENDPOINTS.HIGH_LEVEL_FEATURES}/delete/${featureId}`,
+      deletionReasonDescription ? { deletionReasonDescription } : {}
     );
   }
 
