@@ -5,10 +5,19 @@
       <p class="page-subtitle">Software Requirements Specification document</p>
     </div>
     <div class="header-buttons">
-      <button class="btn btn-secondary" id="btnExportSRS">
+      <button class="btn btn-outline-primary hidden" id="btnFreezeSpecification">
+        <span>🧊</span> Freeze Phase
+      </button>
+      <button class="btn btn-outline-danger hidden" id="btnDeleteSpecification">
+        <span>🗑️</span> Delete Phase
+      </button>
+      <button class="btn btn-primary" id="btnCreateSpecification">
+        <span class="btn-icon">➕</span> Create Phase
+      </button>
+      <button class="btn btn-secondary hidden" id="btnExportSRS">
         <span class="btn-icon">📥</span> Export PDF
       </button>
-      <button class="btn btn-secondary" id="btnPrintSRS">
+      <button class="btn btn-secondary hidden" id="btnPrintSRS">
         <span class="btn-icon">🖨️</span> Print
       </button>
     </div>
@@ -98,4 +107,31 @@
       </table>
     </section>
   </div>
+
+  <!-- Delete Modal -->
+  <div id="deleteSpecificationModal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" data-close-modal="deleteSpecificationModal">&times;</button>
+      <h3>Delete Specification Phase</h3>
+      <form id="deleteSpecificationForm" class="modal-form">
+        <label for="specDeletionReasonType" class="form-label">Deletion Reason <span class="required">*</span></label>
+        <select id="specDeletionReasonType" class="form-control" required>
+          <option value="">Select reason</option>
+          <option value="duplicate_phase">Duplicate</option>
+          <option value="test_or_demo_phase_cleanup">Test / Demo Cleanup</option>
+          <option value="created_by_admin_mistake">Admin Error</option>
+          <option value="other">Other</option>
+        </select>
+
+        <label for="specDeletionReasonDescription" class="form-label">Description (optional)</label>
+        <textarea id="specDeletionReasonDescription" class="form-control" rows="3" placeholder="Additional details..."></textarea>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" data-close-modal="deleteSpecificationModal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Delete Specification</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
+
