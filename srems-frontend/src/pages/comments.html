@@ -9,6 +9,20 @@
 
   <!-- Filters & Search -->
   <div class="filters-bar">
+    <div class="filter-group">
+      <select id="commentEntityType" class="filter-select" title="Comment entity type">
+        <option value="scopes">Scopes</option>
+        <option value="requirements">Requirements</option>
+        <option value="inceptions">Inceptions</option>
+        <option value="high-level-features">High Level Features</option>
+      </select>
+      <select id="commentEntityId" class="filter-select" title="Select a comment target">
+        <option value="">Select an item</option>
+      </select>
+      <small class="field-hint" id="commentEntityHint">Select a project item, not a raw ID.</small>
+      <button class="btn btn-secondary" id="btnLoadComments" type="button">Load</button>
+      <button class="btn btn-primary" id="btnAddComment" type="button">Add Comment</button>
+    </div>
     <div class="search-group">
       <input 
         type="text" 
@@ -18,19 +32,15 @@
       >
     </div>
     <div class="filter-group">
-      <select id="filterType" class="filter-select">
+      <select id="filterType" class="filter-select" title="Filter comments by type">
         <option value="">All Types</option>
-        <option value="REQUIREMENT">Requirement</option>
-        <option value="SCOPE">Scope</option>
-        <option value="FEATURE">Feature</option>
-        <option value="SPECIFICATION">Specification</option>
-        <option value="VALIDATION">Validation</option>
+        <option value="root">Root Comments</option>
+        <option value="reply">Replies</option>
       </select>
-      <select id="filterStatus" class="filter-select">
+      <select id="filterStatus" class="filter-select" title="Filter comments by status">
         <option value="">All Status</option>
-        <option value="OPEN">Open</option>
-        <option value="RESOLVED">Resolved</option>
-        <option value="PENDING">Pending</option>
+        <option value="has-replies">Has Replies</option>
+        <option value="no-replies">No Replies</option>
       </select>
     </div>
   </div>
@@ -38,8 +48,34 @@
   <!-- Comments List -->
   <div id="commentsList" class="comments-section">
     <div class="loading-state">
-      <div class="spinner"></div>
+      <div class="loader"><div class="cell d-0"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-4"></div></div>
       <p>Loading comments...</p>
     </div>
   </div>
+
+  <div id="commentModal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add Comment</h2>
+        <button class="modal-close" type="button" id="closeCommentModal">&times;</button>
+      </div>
+      <form id="commentForm" class="modal-form">
+        <div class="form-group">
+          <label for="commentText">Comment</label>
+          <textarea id="commentText" rows="4" class="form-control" required placeholder="Write your comment"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="parentCommentId">Reply to comment</label>
+          <input type="text" id="parentCommentId" class="form-control" placeholder="Filled automatically when you click Reply" readonly />
+          <small class="field-hint">You usually do not need to touch this field.</small>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelCommentBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Comment</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
+
