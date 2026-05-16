@@ -121,10 +121,16 @@ class ApiClient {
       }
 
       // Check if response is OK
-      if (!response.ok) {
-        const error = new Error(
-          responseData?.message || ERROR_MESSAGES[response.status] || 'API Error'
-        );
+      if (!response.ok || (responseData && responseData.success === false)) {
+        let errorMsg = responseData?.warning || responseData?.message || ERROR_MESSAGES[response.status] || 'API Error';
+        
+        // Append validation errors if available
+        if (responseData?.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+          const valErrors = responseData.errors.map(e => e.message || e.msg || JSON.stringify(e)).join(', ');
+          errorMsg = `${errorMsg} (${valErrors})`;
+        }
+        
+        const error = new Error(errorMsg);
         error.status = response.status;
         error.data = responseData;
         throw error;
