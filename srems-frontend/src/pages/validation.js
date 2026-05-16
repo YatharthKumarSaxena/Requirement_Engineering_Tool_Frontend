@@ -1,6 +1,7 @@
 import { requirementsService } from '../js/services/requirements.service.js';
+import { validationService } from '../js/services/validation.service.js';
 import { store } from '../js/store/store.js';
-import { showToast, showModal, hideModal } from '../js/utils/helpers.js';
+import { showToast, showConfirmDialog, showModal, hideModal } from '../js/utils/helpers.js';
 
 export class ValidationPage {
   constructor() {
@@ -16,8 +17,12 @@ export class ValidationPage {
   }
 
   attachEventListeners() {
+    document.getElementById('btnCreateValidation')?.addEventListener('click', () => this.handleCreateValidation());
+    document.getElementById('btnFreezeValidation')?.addEventListener('click', () => this.handleFreezeValidation());
     document.getElementById('btnStartValidation')?.addEventListener('click', () => this.startValidation());
+    document.getElementById('btnDeleteValidation')?.addEventListener('click', () => this.openDeleteModal());
     document.getElementById('validationForm')?.addEventListener('submit', (e) => this.handleValidationSubmit(e));
+    document.getElementById('deleteValidationForm')?.addEventListener('submit', (e) => this.handleDeleteValidation(e));
 
     document.querySelectorAll('.rating-btn')?.forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -25,6 +30,16 @@ export class ValidationPage {
         document.querySelectorAll('.rating-btn').forEach(b => b.removeAttribute('selected'));
         e.target.setAttribute('selected', 'true');
         document.getElementById('val-rating').value = e.target.dataset.rating;
+      });
+    });
+
+    // Modal close buttons
+    document.querySelectorAll('[data-close-modal]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const modalId = e.currentTarget.getAttribute('data-close-modal');
+        hideModal(modalId);
+      });
+    });
       });
     });
   }
@@ -54,11 +69,98 @@ export class ValidationPage {
         return;
       }
 
-      this.requirements = await requirementsService.getRequirements(projectId);
-      this.renderValidationProgress();
-      this.renderValidationItems();
+      // Check for active validation phase
+      const validation = await validationService.getLatestValidation(projectId);
+      
+      const btnCreate = document.getElementById('btnCreateValidation');
+      const btnFreeze = document.getElementById('btnFreezeValidation');
+      const btnStart = document.getElementById('btnStartValidation');
+      const container = document.getElementById('validationContainer');
+
+      if (validation) {
+        // Hide create, show freeze and start
+        if (btnCreate) btnCreate.classList.add('hidden');
+        if (btnStart) btnStart.classList.remove('hidden');
+        
+        if (btnFreeze) {
+          if (!validation.isFrozen && !validation.isDeleted) {
+            btnFreeze.classList.remove('hidden');
+          } else {
+            btnFreeze.classList.add('hidden');
+            if (btnStart) btnStart.classList.add('hidden'); // Cannot start if frozen
+          }
+        }
+
+        const btnDelete = document.getElementById('btnDeleteValidation');
+        if (btnDelete) {
+          if (!validation.isFrozen && !validation.isDeleted) {
+            btnDelete.classList.remove('hidden');
+          } else {
+            btnDelete.classList.add('hidden');
+          }
+        }
+
+        this.requirements = await requirementsService.getRequirements(projectId);
+        this.renderValidationProgress();
+        this.renderValidationItems();
+      } else {
+        // Show create, hide others
+        if (btnCreate) btnCreate.classList.remove('hidden');
+        if (btnFreeze) btnFreeze.classList.add('hidden');
+
+        const btnDelete = document.getElementById('btnDeleteValidation');
+        if (btnDelete) btnDelete.classList.add('hidden');
+        if (btnStart) btnStart.classList.add('hidden');
+        
+        if (container) {
+          container.innerHTML = '<div class="empty-state"><p>No Validation phase created yet. Create one to begin.</p></div>';
+        }
+      }
     } catch (error) {
       showToast(error.message || 'Failed to load requirements', 'error');
+    }
+  }
+
+  async handleCreateValidation() {
+    try {
+      let projectId = store.state.projects.current?._id || 
+                     store.state.projects.current?.id || 
+                     store.state.projects.current;
+
+      const response = await validationService.createValidation(projectId, {});
+      if (!response.success) {
+        showToast(response.message || 'Failed to create validation phase', 'error');
+        return;
+      }
+
+      showToast('Validation phase created successfully!', 'success');
+      await this.loadRequirements();
+    } catch (error) {
+      console.error('[Validation] Error creating phase:', error);
+      showToast(error.message || 'Failed to create validation phase', 'error');
+    }
+  }
+
+  async handleFreezeValidation() {
+    const confirmed = await showConfirmDialog('Freeze Validation Phase', 'Are you sure you want to freeze this phase? This action cannot be undone and will lock the phase from further edits.');
+    if (!confirmed) return;
+
+    try {
+      let projectId = store.state.projects.current?._id || 
+                     store.state.projects.current?.id || 
+                     store.state.projects.current;
+
+      const response = await validationService.freezeValidation(projectId);
+      if (!response.success) {
+        showToast(response.message || 'Failed to freeze validation phase', 'error');
+        return;
+      }
+
+      showToast('Validation phase frozen successfully. Project Management can now begin.', 'success');
+      await this.loadRequirements(); // Reload the data to update UI state
+    } catch (error) {
+      console.error('[Validation] Error freezing phase:', error);
+      showToast(error.message || 'Failed to freeze validation phase', 'error');
     }
   }
 
@@ -205,12 +307,50 @@ export class ValidationPage {
     }
     this.openValidationModal(unvalidated);
   }
+
+  openDeleteModal() {
+    showModal('deleteValidationModal');
+  }
+
+  async handleDeleteValidation(e) {
+    e.preventDefault();
+
+    try {
+      let projectId = store.state.projects.current?._id || 
+                     store.state.projects.current?.id || 
+                     store.state.projects.current;
+
+      if (!projectId) {
+        showToast('Please select a project', 'warning');
+        return;
+      }
+
+      const reasonType = document.getElementById('valDeletionReasonType')?.value?.trim() || '';
+      const reasonDescription = document.getElementById('valDeletionReasonDescription')?.value?.trim() || '';
+
+      if (!reasonType) {
+        showToast('Please select a valid deletion reason', 'error');
+        return;
+      }
+
+      const deleteData = { deletionReasonType: reasonType };
+      if (reasonDescription) deleteData.deletionReasonDescription = reasonDescription;
+
+      const response = await validationService.deleteValidation(projectId, deleteData);
+
+      if (!response.success) {
+        showToast(response.message || 'Failed to delete validation phase', 'error');
+        return;
+      }
+
+      hideModal('deleteValidationModal');
+      showToast('Validation phase deleted successfully', 'success');
+      setTimeout(() => { window.location.reload(); }, 800);
+    } catch (error) {
+      console.error('[Validation] Error deleting phase:', error);
+      showToast(error.message || 'Failed to delete validation phase', 'error');
+    }
+  }
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    new ValidationPage();
-  });
-} else {
-  new ValidationPage();
-}
+
