@@ -4,9 +4,26 @@
  */
 
 import apiClient from './api.js';
-import { API_CONFIG } from '../utils/constants.js';
 
 class ElicitationService {
+  normalizeElicitation(elicitation) {
+    if (!elicitation) return null;
+
+    const normalizedId = elicitation._id || elicitation.id;
+    return {
+      ...elicitation,
+      _id: normalizedId,
+      id: normalizedId,
+      elicitationMode: elicitation.elicitationMode || elicitation.mode || elicitation.method || null
+    };
+  }
+
+  normalizeList(response) {
+    const payload = response?.data;
+    const elicitations = payload?.data?.elicitations || payload?.elicitations || payload?.data || payload || [];
+    return Array.isArray(elicitations) ? elicitations.map((item) => this.normalizeElicitation(item)) : [];
+  }
+
   /**
    * Create elicitation
    * Backend: POST /elicitations/create/:projectId
@@ -15,7 +32,10 @@ class ElicitationService {
     const { projectId, ...data } = elicitationData;
     return apiClient.post(
       `/elicitations/create/${projectId}`,
-      data
+      {
+        mode: data.mode,
+        allowParallelMeetings: data.allowParallelMeetings === true
+      }
     );
   }
 
@@ -33,7 +53,7 @@ class ElicitationService {
         return [];
       }
       
-      return Array.isArray(response.data) ? response.data : [];
+      return this.normalizeList(response);
     } catch (error) {
       console.error('Failed to fetch elicitations:', error);
       return [];
@@ -50,11 +70,24 @@ class ElicitationService {
         throw new Error('Project ID is required');
       }
       const response = await apiClient.get(`/elicitations/latest/${projectId}`);
-      return response.data || null;
+      // response.data is the backend JSON: { success, data: { ... } }
+      // So the actual object is in response.data.data
+      return this.normalizeElicitation(response.data?.data?.elicitation || response.data?.data || null);
     } catch (error) {
       console.error('Failed to fetch latest elicitation:', error);
       return null;
     }
+  }
+
+  /**
+   * Freeze elicitation
+   * Backend: PATCH /elicitations/freeze/:projectId
+   */
+  async freezeElicitation(projectId) {
+    return apiClient.patch(
+      `/elicitations/freeze/${projectId}`,
+      {}
+    );
   }
 
   /**
