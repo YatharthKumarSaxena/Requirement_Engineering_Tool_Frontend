@@ -13,7 +13,7 @@
       <h1 class="page-title">Requirements Process</h1>
       <p class="page-subtitle">Track your requirements engineering workflow</p>
     </div>
-    <button class="btn btn-primary" id="btnNewProject">
+    <button class="btn btn-primary admin-only" id="btnNewProject">
       <span class="btn-icon">➕</span> New Project
     </button>
   </div>
@@ -39,7 +39,7 @@
   </div>
 
   <!-- RE Process Timeline -->
-  <section class="dashboard-section">
+  <section class="dashboard-section admin-only">
     <div class="section-header">
       <h2>Requirements Engineering Process</h2>
       <span class="section-subtitle">Track your RE phases</span>
@@ -98,14 +98,14 @@
     </div>
     <div id="recentProjectsList" class="projects-mini-grid">
       <div class="loading-spinner">
-        <div class="spinner"></div>
+        <div class="loader"><div class="cell d-0"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-4"></div></div>
         Loading projects...
       </div>
     </div>
   </section>
 
   <!-- Quick Actions -->
-  <section class="dashboard-section">
+  <section class="dashboard-section admin-only">
     <h2>Quick Actions</h2>
     <div class="quick-actions-grid">
       <a href="#/requirements" class="action-card">
@@ -142,16 +142,17 @@
   </section>
 
   <!-- Recent Activity -->
-  <section class="dashboard-section">
+  <section class="dashboard-section admin-only">
     <div class="section-header">
       <h2>Recent Activity</h2>
       <a href="#/activity" class="link-secondary">View all →</a>
     </div>
     <div id="recentActivityList" class="activity-feed">
       <div class="loading-spinner">
-        <div class="spinner"></div>
+        <div class="loader"><div class="cell d-0"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-4"></div></div>
         Loading activity...
       </div>
     </div>
   </section>
 </div>
+
