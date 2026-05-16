@@ -35,8 +35,13 @@ class StakeholdersService {
    * Get all stakeholders with pagination
    */
   async getStakeholders(page = 1, pageSize = 10) {
+    const role = localStorage.getItem('user_role');
+    const clientRoles = ['sponsor', 'partner', 'vendor', 'end_user', 'other'];
+    const isClient = clientRoles.includes(role);
+    const endpoint = isClient ? '/clients/list-stakeholders' : `${API_CONFIG.ENDPOINTS.STAKEHOLDERS}/list`;
+    
     return apiClient.get(
-      `${API_CONFIG.ENDPOINTS.STAKEHOLDERS}/list?page=${page}&pageSize=${pageSize}`
+      `${endpoint}?page=${page}&pageSize=${pageSize}`
     );
   }
 
@@ -44,7 +49,12 @@ class StakeholdersService {
    * Get stakeholder by ID
    */
   async getStakeholderById(stakeholderId) {
-    return apiClient.get(`${API_CONFIG.ENDPOINTS.STAKEHOLDERS}/get/${stakeholderId}`);
+    const role = localStorage.getItem('user_role');
+    const clientRoles = ['sponsor', 'partner', 'vendor', 'end_user', 'other'];
+    const isClient = clientRoles.includes(role);
+    const endpoint = isClient ? `/clients/get-stakeholder/${stakeholderId}` : `${API_CONFIG.ENDPOINTS.STAKEHOLDERS}/get/${stakeholderId}`;
+    
+    return apiClient.get(endpoint);
   }
 
   /**
@@ -79,8 +89,13 @@ class StakeholdersService {
   async getProjectStakeholders(projectId) {
     console.log('📤 Fetching stakeholders for project:', projectId);
     
+    const role = localStorage.getItem('user_role');
+    const clientRoles = ['sponsor', 'partner', 'vendor', 'end_user', 'other'];
+    const isClient = clientRoles.includes(role);
+    const endpoint = isClient ? '/clients/list-stakeholders' : `${API_CONFIG.ENDPOINTS.STAKEHOLDERS}/list`;
+    
     const response = await apiClient.get(
-      `${API_CONFIG.ENDPOINTS.STAKEHOLDERS}/list?projectId=${projectId}`
+      `${endpoint}?projectId=${projectId}`
     );
     
     console.log('📥 Service received response:', {
