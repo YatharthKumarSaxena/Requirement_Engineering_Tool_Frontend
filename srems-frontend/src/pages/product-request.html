@@ -15,21 +15,20 @@
       <label for="filterPriority" class="filter-label">Priority</label>
       <select id="filterPriority" class="filter-select">
         <option value="">All Priorities</option>
-        <option value="critical">Critical</option>
-        <option value="high">High</option>
-        <option value="medium">Medium</option>
-        <option value="low">Low</option>
+        <option value="LOW">Low</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="HIGH">High</option>
+        <option value="CRITICAL">Critical</option>
       </select>
     </div>
     <div class="filter-group">
       <label for="filterRequestStatus" class="filter-label">Status</label>
       <select id="filterRequestStatus" class="filter-select">
         <option value="">All Status</option>
-        <option value="submitted">Submitted</option>
-        <option value="approved">Approved</option>
-        <option value="rejected">Rejected</option>
-        <option value="in-progress">In Progress</option>
-        <option value="completed">Completed</option>
+        <option value="PENDING">Pending</option>
+        <option value="APPROVED">Approved</option>
+        <option value="REJECTED">Rejected</option>
+        <option value="WITHDRAWN">Withdrawn</option>
       </select>
     </div>
     <div class="filter-group">
@@ -41,7 +40,7 @@
   <!-- Product Requests List -->
   <div id="productRequestContainer" class="list-container">
     <div class="loading-spinner">
-      <div class="spinner"></div>
+      <div class="loader"><div class="cell d-0"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-1"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-2"></div><div class="cell d-3"></div><div class="cell d-4"></div></div>
       <p>Loading product requests...</p>
     </div>
   </div>
@@ -54,3 +53,109 @@
     <button class="btn btn-primary" id="btnCreateProductRequestEmpty">Create First Request</button>
   </div>
 </div>
+
+<!-- Create Product Request Modal -->
+<div id="productRequestModal" class="modal hidden">
+  <div class="modal-content modal-lg">
+    <div class="modal-header">
+      <h2>Create Product Request</h2>
+      <button class="modal-close" type="button" id="closeProductRequestModal">&times;</button>
+    </div>
+    <form id="productRequestForm" class="form-stack">
+      <div class="form-group">
+        <label for="productRequestTitle" class="form-label">Title *</label>
+        <input id="productRequestTitle" class="form-control" type="text" maxlength="120" placeholder="Enter request title" required />
+      </div>
+
+      <div class="form-group">
+        <label for="productRequestDescription" class="form-label">Description *</label>
+        <textarea id="productRequestDescription" class="form-control" rows="4" maxlength="2000" placeholder="Describe the request" required></textarea>
+      </div>
+
+      <div class="form-grid two-column">
+        <div class="form-group">
+          <label for="productRequestProjectType" class="form-label">Project Type *</label>
+          <select id="productRequestProjectType" class="form-control" required>
+            <option value="">Select Type</option>
+            <option value="development">Development</option>
+            <option value="enhancement">Enhancement</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="productRequestProjectCategory" class="form-label">Project Category *</label>
+          <select id="productRequestProjectCategory" class="form-control" required>
+            <option value="">Select Category</option>
+            <option value="individual">Individual</option>
+            <option value="organization">Organization</option>
+            <option value="multi_organization">Multi Organization</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="productRequestPriority" class="form-label">Priority *</label>
+          <select id="productRequestPriority" class="form-control" required>
+            <option value="">Select Priority</option>
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="productRequestTimeline" class="form-label">Expected Timeline in Days</label>
+          <input id="productRequestTimeline" class="form-control" type="number" min="1" step="1" placeholder="30" />
+        </div>
+
+        <div class="form-group">
+          <label for="productRequestBudget" class="form-label">Budget</label>
+          <input id="productRequestBudget" class="form-control" type="number" min="0" step="0.01" placeholder="10000" />
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" id="cancelProductRequestBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Action Modal (Approve/Reject) -->
+<div id="actionModal" class="modal hidden">
+  <div class="modal-content modal-md">
+    <div class="modal-header">
+      <h2 id="actionModalTitle">Action</h2>
+      <button class="modal-close" data-close-modal="actionModal">&times;</button>
+    </div>
+    <form id="actionForm" class="form-stack">
+      <div class="form-group">
+        <label id="reasonTypeLabel" for="reasonType" class="form-label">Reason Type *</label>
+        <select id="reasonType" class="form-control">
+          <option value="">Select Type</option>
+          <option value="STANDARD">Standard</option>
+          <option value="PRIORITY_CONFLICT">Priority Conflict</option>
+          <option value="RESOURCE_CONSTRAINT">Resource Constraint</option>
+          <option value="STRATEGIC_DECISION">Strategic Decision</option>
+          <option value="OTHER">Other</option>
+        </select>
+        <span class="form-error" id="error-reasonType"></span>
+      </div>
+
+      <div class="form-group hidden" id="reasonDescriptionGroup">
+        <label id="reasonDescriptionLabel" for="reasonDescription" class="form-label">Details</label>
+        <textarea id="reasonDescription" class="form-control" rows="3" placeholder="Enter additional details..."></textarea>
+        <span class="form-error" id="error-reasonDescription"></span>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" data-close-modal="actionModal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </div>
+    </form>
+  </div>
+</div>
+
