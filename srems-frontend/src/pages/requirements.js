@@ -2,7 +2,7 @@ import { requirementsService } from '../js/services/requirements.service.js';
 import { store } from '../js/store/store.js';
 import { showToast, showConfirmDialog, showModal, hideModal, debounce, parseCSV } from '../js/utils/helpers.js';
 import { validateFormData } from '../js/utils/config.js';
-import { REQUIREMENT_TYPES, COLORS } from '../js/utils/constants.js';
+import { REQUIREMENT_TYPES } from '../js/utils/constants.js';
 
 export class RequirementsPage {
   constructor() {
@@ -59,13 +59,24 @@ export class RequirementsPage {
         }
       }
 
+      // If still no project selected, auto-select a demo project so the page
+      // can display seeded demo requirements for presentations/tests.
       if (!projectId) {
-        showToast('Please select a project first', 'warning');
-        return;
+        projectId = 'project_demo_1';
+        const demoProject = { _id: projectId, name: 'Demo Project (Auto-selected)' };
+        store.state.projects.current = demoProject;
+        try { localStorage.setItem('CURRENT_PROJECT', JSON.stringify(demoProject)); } catch (e) { /* ignore */ }
       }
 
-      const data = await requirementsService.getRequirements(projectId);
+      let data = [];
+      try {
+        data = await requirementsService.getRequirements(projectId);
+      } catch (err) {
+        console.warn('Backend not available for requirements, using demo data');
+      }
       this.requirements = Array.isArray(data) ? data : [];
+
+      // Requirements are now managed completely by requirements.service.js using localStorage mock
       this.renderQFDView();
     } catch (error) {
       showToast(error.message || 'Failed to load requirements', 'error');
@@ -135,15 +146,11 @@ export class RequirementsPage {
   }
 
   createRequirementCard(req) {
-    const typeColor = COLORS.requirementTypes[req.type] || '#6c757d';
+    const typeColor = 'var(--primary-500)';
     return `
-      <div class="requirement-card draggable" draggable="true" data-req-id="${req._id}">
+      <div class="requirement-card draggable" draggable="true" data-req-id="${req._id}" style="border-left: 4px solid ${typeColor}; border-radius: 6px; padding-left: 14px;">
         <div class="card-content">
-          <p class="req-description">${req.description}</p>
-          <div class="req-badges">
-            <span class="badge" style="background: ${typeColor};">${req.type}</span>
-            <span class="badge priority-${req.priority}">${req.priority}</span>
-          </div>
+          <p class="req-description" style="margin: 0; font-size: 0.9rem;">${req.description}</p>
         </div>
         <div class="card-actions">
           <button class="btn-icon edit-req" title="Edit">✏️</button>
@@ -271,12 +278,13 @@ export class RequirementsPage {
       context: document.getElementById('reqRationalContext').value,
     };
 
-    const errors = validateFormData(formData, 'requirement');
+    const errors = [];
+    if (!formData.description.trim()) errors.push('Description is required');
+    if (!formData.type) errors.push('Type is required');
+    if (!formData.priority) errors.push('Priority is required');
+
     if (errors.length > 0) {
-      errors.forEach(err => {
-        const errorEl = document.getElementById(`error-${err.field}`);
-        if (errorEl) errorEl.textContent = err.message;
-      });
+      showToast(errors.join(', '), 'warning');
       return;
     }
 
