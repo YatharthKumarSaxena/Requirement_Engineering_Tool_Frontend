@@ -119,9 +119,11 @@ function goToSoftwareManagement() {
   console.log("✅ Redirecting to Software Management Dashboard");
   console.log("   Token length:", token.length);
   console.log("   Device UUID:", deviceUUID);
+
+  const basePrefix = window.location.pathname.includes('/PROJECT/') ? '/PROJECT' : '';
   
   // Redirect to Software Management Frontend Dashboard (Port 5500 - hash-based routing)
-  window.location.href = "http://127.0.0.1:5500/srems-frontend/index.html#/";
+  window.location.href = `${window.location.origin}${basePrefix}/srems-frontend/index.html#/`;
 }
 
 /**
@@ -148,9 +150,11 @@ function goToAdminPanel() {
   console.log("✅ Redirecting to Admin Panel");
   console.log("   Token length:", token.length);
   console.log("   Device UUID:", deviceUUID);
+
+  const basePrefix = window.location.pathname.includes('/PROJECT/') ? '/PROJECT' : '';
   
   // Redirect to Admin Panel
-  window.location.href = "http://127.0.0.1:5500/admin-panel/index.html";
+  window.location.href = `${window.location.origin}${basePrefix}/admin-panel/index.html`;
 }
 
 /**
