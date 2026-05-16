@@ -42,9 +42,10 @@ export const meetingsService = {
       `${API_CONFIG.ENDPOINTS.MEETINGS}/create/${entityType}/${projectId}`,
       normalizedData
     );
-    
-    // Backend returns: {data: {meeting: {...}}}
-    response.data = response.data?.meeting || response.data;
+
+    // apiClient wraps backend JSON in response.data; backend payload is usually response.data.data
+    const payload = response.data;
+    response.data = payload?.data?.meeting || payload?.meeting || payload?.data || payload;
     return response;
   },
 
@@ -68,9 +69,10 @@ export const meetingsService = {
         console.warn('⚠️ API returned success:false', response.message);
         return [];
       }
-      
-      // Backend returns: {data: {meetings: [...], pagination: {...}}}
-      const meetings = response.data?.meetings || [];
+
+      // Support both wrapped and direct payloads.
+      const payload = response.data;
+      const meetings = payload?.data?.meetings || payload?.meetings || payload?.data || [];
       const data = Array.isArray(meetings) ? meetings : [];
       console.log(`✅ Returning ${data.length} meetings`);
       return data;
@@ -91,9 +93,9 @@ export const meetingsService = {
     const response = await apiClient.get(
       `${API_CONFIG.ENDPOINTS.MEETINGS}/get/${entityType}/${meetingId}`
     );
-    
-    // Backend returns: {data: {meeting: {...}}}
-    response.data = response.data?.meeting || response.data;
+
+    const payload = response.data;
+    response.data = payload?.data?.meeting || payload?.meeting || payload?.data || payload;
     return response;
   },
 
@@ -110,9 +112,9 @@ export const meetingsService = {
       `${API_CONFIG.ENDPOINTS.MEETINGS}/update/${entityType}/${meetingId}`,
       meetingData
     );
-    
-    // Backend returns: {data: {meeting: {...}}}
-    response.data = response.data?.meeting || response.data;
+
+    const payload = response.data;
+    response.data = payload?.data?.meeting || payload?.meeting || payload?.data || payload;
     return response;
   },
 
