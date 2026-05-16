@@ -34,20 +34,20 @@ const API = {
   getHeaders() {
     const token = localStorage.getItem('adminAuthToken') || localStorage.getItem('accessToken');
     const deviceUUID = localStorage.getItem('deviceUUID');
-    
+
     const headers = {
       'Content-Type': 'application/json',
     };
-    
+
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     // Add device UUID if available (required by backend middleware)
     if (deviceUUID) {
       headers['x-device-uuid'] = deviceUUID;
     }
-    
+
     return headers;
   },
 
@@ -76,7 +76,7 @@ const API = {
     try {
       console.debug(`📡 API Request [Attempt ${retryCount + 1}/${API_CONFIG.MAX_RETRIES + 1}]: ${method} ${endpoint}`);
       console.debug(`📋 Request Body:`, config.body ? JSON.parse(config.body) : 'No body');
-      
+
       // Create abort controller for timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.REQUEST_TIMEOUT);
@@ -84,7 +84,7 @@ const API = {
 
       const response = await fetch(url, config);
       clearTimeout(timeoutId);
-      
+
       const result = await response.json();
 
       if (!response.ok) {
@@ -95,27 +95,27 @@ const API = {
           localStorage.removeItem('adminRefreshToken');
           localStorage.removeItem('adminData');
           // Keep accessToken and deviceUUID
-          
+
           // Redirect to Project login page if token expired
           setTimeout(() => {
             window.location.href = 'http://127.0.0.1:5500/project/index.html';
           }, 500);
           return;
         }
-        
+
         // Check if error is retryable
         if (API_CONFIG.RETRY_STATUS_CODES.includes(response.status) && retryCount < API_CONFIG.MAX_RETRIES) {
           console.warn(`⚠️ Retryable error (${response.status}): Retrying in ${API_CONFIG.RETRY_DELAY}ms`);
           await new Promise(resolve => setTimeout(resolve, API_CONFIG.RETRY_DELAY));
           return this.request(method, endpoint, data, baseUrl, retryCount + 1);
         }
-        
+
         // Log detailed error information including warnings
         console.error(`❌ API Error ${response.status}:`, result);
         if (result.warning) {
           console.warn('⚠️  Error Details:', result.warning);
         }
-        
+
         // Handle authorization errors with better messaging
         if (response.status === 403 && result.warning) {
           const warningMsg = typeof result.warning === 'string' ? result.warning : result.message;
@@ -123,7 +123,7 @@ const API = {
             throw new Error(`❌ AUTHORIZATION ERROR: You don't have permission to perform this action. ${warningMsg}`);
           }
         }
-        
+
         throw new Error(result.message || `API Error: ${response.status}`);
       }
 
@@ -140,7 +140,7 @@ const API = {
         }
         throw new Error('Request timeout - Server not responding');
       }
-      
+
       console.error(`🚨 API Request Failed: ${method} ${endpoint}`, error);
       throw error;
     }
@@ -148,7 +148,7 @@ const API = {
 
   // Auth Endpoints (External Auth Service) - Using Project's auth endpoints
   // Note: Admin panel uses same auth system as Project (port 8080)
-  
+
   /**
    * Admin login endpoint
    * @param {Object} credentials - Login credentials { email, password }
@@ -166,7 +166,8 @@ const API = {
 
   // Admin Endpoints
   async getAdmins(page = 1, limit = 10) {
-    return this.request('GET', `/admins?page=${page}&limit=${limit}`);
+    // Backend exposes list endpoint at /admins/list-admins
+    return this.request('GET', `/admins/list-admins?page=${page}&limit=${limit}`);
   },
 
   async createAdmin(adminData) {
@@ -187,8 +188,8 @@ const API = {
 
   async blockAdmin(adminId, blockReason = 'admin_action', reasonDescription = '') {
     if (!adminId) throw new Error('adminId is required');
-    const data = { 
-      adminId,
+    const data = {
+      userId: adminId,
       blockReason: blockReason || 'admin_action'
     };
     if (reasonDescription) data.reasonDescription = reasonDescription;
@@ -197,8 +198,8 @@ const API = {
 
   async unblockAdmin(adminId, unblockReason = 'admin_action', reasonDescription = '') {
     if (!adminId) throw new Error('adminId is required');
-    const data = { 
-      adminId,
+    const data = {
+      userId: adminId,
       unblockReason: unblockReason || 'admin_action'
     };
     if (reasonDescription) data.reasonDescription = reasonDescription;
@@ -221,7 +222,8 @@ const API = {
 
   // User Endpoints
   async getUsers(page = 1, limit = 10) {
-    return this.request('GET', `/users?page=${page}&limit=${limit}`);
+    // Backend exposes list endpoint at /users/list-users
+    return this.request('GET', `/users/list-users?page=${page}&limit=${limit}`);
   },
 
   async getUser(userId) {
@@ -247,18 +249,18 @@ const API = {
     if (!userId || !convertReason || !role) {
       throw new Error('Missing required fields: userId, convertReason, role');
     }
-    
+
     const data = {
       userId,
       convertReason,
       role,
       organizationIds
     };
-    
+
     if (reasonDescription) {
       data.reasonDescription = reasonDescription;
     }
-    
+
     return this.request('POST', `/admins/convert-user-to-client`, data);
   },
 
@@ -335,7 +337,13 @@ const API = {
 
   // Device Endpoints
   async getDevices(page = 1, limit = 10) {
-    return this.request('GET', `/devices?page=${page}&limit=${limit}`);
+    // Try devices list endpoint if backend provides it; fall back to empty data
+    try {
+      return await this.request('GET', `/devices/list?page=${page}&limit=${limit}`);
+    } catch (err) {
+      console.warn('Devices list not available from backend, returning empty list');
+      return { data: [], pagination: { page, limit, total: 0 } };
+    }
   },
 
   async getDevice(deviceId) {
@@ -357,7 +365,7 @@ const API = {
   },
 
   // Activity Tracker Endpoints
-  
+
   /**
    * Get Admin Activities - View activity history of a specific admin
    * @param {string} userId - Admin ID whose activities to view
@@ -370,18 +378,18 @@ const API = {
     if (!userId || !reason) {
       throw new Error('Missing required fields: userId, reason');
     }
-    
+
     const data = {
       userId,
       reason,
       page,
       limit
     };
-    
+
     if (reasonDescription) {
       data.reasonDescription = reasonDescription;
     }
-    
+
     return this.request('POST', `/activity-trackers/admin-activities`, data);
   },
 
