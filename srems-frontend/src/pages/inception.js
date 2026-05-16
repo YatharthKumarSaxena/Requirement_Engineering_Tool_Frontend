@@ -37,7 +37,7 @@ export class InceptionPage {
             <button type="button" class="modal-close" id="btnCloseInceptionModal">&times;</button>
           </div>
           <div class="modal-body">
-            <form id="inceptionForm">
+            <form id="inceptionForm" class="modal-form">
               <div class="form-group checkbox-group">
                 <label class="checkbox-label">
                   <input type="checkbox" id="inceptionParallelMeetings" class="form-input">
