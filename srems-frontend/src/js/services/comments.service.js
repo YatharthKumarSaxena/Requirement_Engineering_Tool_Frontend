@@ -14,6 +14,34 @@ import { apiClient } from './api.js';
  * DELETE /comments/delete/:commentId
  */
 export const commentsService = {
+  supportedEntityTypes: ['scopes', 'requirements', 'inceptions', 'high-level-features'],
+
+  normalizeCommentTree(comment) {
+    const commentId = comment?._id || comment?.id;
+    const children = comment?.replies || comment?.childComments || [];
+
+    return {
+      ...comment,
+      _id: commentId,
+      id: commentId,
+      childComments: Array.isArray(children)
+        ? children.map((child) => this.normalizeCommentTree(child))
+        : []
+    };
+  },
+
+  normalizeCommentResponse(response, fallbackMessage) {
+    if (!response.success) {
+      throw new Error(response.message || fallbackMessage);
+    }
+
+    return response.data?.data?.comment
+      || response.data?.comment
+      || response.data?.data
+      || response.data
+      || null;
+  },
+
   /**
    * Create new comment
    * Backend: POST /comments/create
@@ -31,10 +59,9 @@ export const commentsService = {
       return { success: false, message: 'Invalid entity ID' };
     }
 
-    // Validate entityType - must be one of the supported types
-    const validEntityTypes = ['scopes', 'requirements', 'inceptions', 'high-level-features'];
-    if (!entityType || !validEntityTypes.includes(entityType)) {
-      console.error('❌ Invalid entityType for comment:', entityType, '- must be one of:', validEntityTypes.join(', '));
+    // Validate entityType - must be one of the supported backend entity collections
+    if (!entityType || !this.supportedEntityTypes.includes(entityType)) {
+      console.error('❌ Invalid entityType for comment:', entityType, '- must be one of:', this.supportedEntityTypes.join(', '));
       return { success: false, message: 'Invalid entity type' };
     }
 
@@ -46,10 +73,12 @@ export const commentsService = {
       ...(commentData.parentCommentId && { parentCommentId: commentData.parentCommentId })
     };
 
-    return apiClient.post(
+    const response = await apiClient.post(
       `${API_CONFIG.ENDPOINTS.COMMENTS}/create`,
       normalizedData
     );
+
+    return this.normalizeCommentResponse(response, 'Failed to create comment');
   },
 
   /**
@@ -70,10 +99,11 @@ export const commentsService = {
       );
       
       if (!response.success) {
-        return [];
+        throw new Error(response.message || 'Failed to fetch comments');
       }
       
-      return Array.isArray(response.data) ? response.data : [];
+      // ApiClient wraps backend response, so we access response.data.data.comments
+      return (response.data?.data?.comments || []).map((comment) => this.normalizeCommentTree(comment));
     } catch (error) {
       console.error('Failed to fetch comments:', error);
       return [];
@@ -89,9 +119,15 @@ export const commentsService = {
       limit: params.limit || 20,
     }).toString();
 
-    return apiClient.get(
+    const response = await apiClient.get(
       `${API_CONFIG.ENDPOINTS.COMMENTS}/list/${entityType}/${entityId}?${queryParams}`
     );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to fetch comments');
+    }
+
+    return response.data?.data?.comments || [];
   },
 
   /**
@@ -106,9 +142,20 @@ export const commentsService = {
       return { success: false, data: [] };
     }
     
-    return apiClient.get(
+    const response = await apiClient.get(
       `${API_CONFIG.ENDPOINTS.COMMENTS}/list-hierarchical/${entityType}/${entityId}`
     );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to fetch comments');
+    }
+
+    const comments = response.data?.data?.comments || [];
+    return comments.map((comment) => this.normalizeCommentTree(comment));
+  },
+
+  async listHierarchical(entityType, entityId, params = {}) {
+    return this.getCommentsByEntityHierarchical(entityType, entityId, params);
   },
 
   /**
@@ -116,9 +163,11 @@ export const commentsService = {
    * Backend: GET /comments/get/:commentId
    */
   async getComment(commentId) {
-    return apiClient.get(
+    const response = await apiClient.get(
       `${API_CONFIG.ENDPOINTS.COMMENTS}/get/${commentId}`
     );
+
+    return this.normalizeCommentResponse(response, 'Failed to fetch comment');
   },
 
   /**
@@ -131,10 +180,12 @@ export const commentsService = {
       commentText: commentData.commentText  // REQUIRED
     };
 
-    return apiClient.patch(
+    const response = await apiClient.patch(
       `${API_CONFIG.ENDPOINTS.COMMENTS}/update/${commentId}`,
       normalizedData
     );
+
+    return this.normalizeCommentResponse(response, 'Failed to update comment');
   },
 
   /**
@@ -145,10 +196,16 @@ export const commentsService = {
   async deleteComment(commentId, deletedReason = null) {
     const deleteData = deletedReason ? { deletedReason } : {};
 
-    return apiClient.delete(
+    const response = await apiClient.delete(
       `${API_CONFIG.ENDPOINTS.COMMENTS}/delete/${commentId}`,
       deleteData
     );
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to delete comment');
+    }
+
+    return response;
   },
 
   /**
@@ -159,5 +216,13 @@ export const commentsService = {
       commentText: replyData.commentText,
       parentCommentId: parentCommentId
     });
+  },
+
+  async create(entityType, entityId, commentText, parentCommentId = null) {
+    return this.createComment(entityType, entityId, { commentText, parentCommentId });
+  },
+
+  async delete(commentId, deletedReason = null) {
+    return this.deleteComment(commentId, deletedReason);
   }
 };
