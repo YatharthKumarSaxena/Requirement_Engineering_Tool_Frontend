@@ -168,7 +168,7 @@ function logoutAdmin() {
   // Redirect to Project login page after short delay
   setTimeout(() => {
     // Redirect to Project index/login page - complete logout
-    window.location.href = 'http://127.0.0.1:5500/PROJECT/project/auth/login.html';
+    window.location.href = '../auth/login.html';
   }, 1000);
 }
 
@@ -210,7 +210,10 @@ window.addEventListener('load', async () => {
   }
 
   // Set admin name
-  document.getElementById('adminName').textContent = admin.fullName || admin.email || 'Admin';
+  const adminNameEl = document.getElementById('adminName');
+  if (adminNameEl) {
+    adminNameEl.textContent = admin.fullName || admin.email || 'Admin';
+  }
 
   // Setup event listeners
   setupNavigation();
@@ -275,7 +278,10 @@ async function navigateToPage(page) {
     'organization-user-requests': 'Organization User Requests',
   };
 
-  document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';
+  const pageTitleEl = document.getElementById('pageTitle');
+  if (pageTitleEl) {
+    pageTitleEl.textContent = titles[page] || 'Dashboard';
+  }
 
   // Load page-specific data (DEMO VERSION)
   switch (page) {
@@ -304,7 +310,9 @@ async function navigateToPage(page) {
 
   // Close mobile sidebar
   const sidebar = document.querySelector('.sidebar');
-  sidebar.classList.remove('mobile-open');
+  if (sidebar) {
+    sidebar.classList.remove('mobile-open');
+  }
 }
 
 // Sidebar Toggle
@@ -356,7 +364,7 @@ function setupBackButton() {
   if (backBtn) {
     backBtn.addEventListener('click', () => {
       console.log('🔙 Returning to Project dashboard...');
-      window.location.href = 'http://127.0.0.1:5500/PROJECT/project/app/dashboard.html';
+      window.location.href = '../../project/app/dashboard.html';
     });
   }
 }
