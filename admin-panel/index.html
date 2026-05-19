@@ -38,15 +38,15 @@
     <script>
       console.log("✅ Admin Panel initialization started");
       
-      // � Check authentication token from Project
+      // Check authentication token from Project
       const accessToken = localStorage.getItem('accessToken');
       const deviceUUID = localStorage.getItem('deviceUUID');
       
       if (!accessToken) {
-        console.warn('🔓 No authentication token found - Redirecting to Project login');
-        // Redirect to Project login if no token
+        console.warn('No authentication token found - redirecting to Project login');
+        // Redirect to Project login if no token (use relative path)
         localStorage.clear(); // Clear any stale admin data
-        window.location.href = 'http://127.0.0.1:5500/project/auth/login.html';
+        window.location.href = '../project/auth/login.html';
       } else {
         console.log('✅ Token found - Syncing to admin panel');
         
@@ -72,13 +72,13 @@
         }
         
         setTimeout(() => {
-          console.log("🚀 Redirecting to admin dashboard...");
+          console.log("Redirecting to admin dashboard...");
           window.location.href = "dashboard/index.html";
         }, 2500);
       }
 
       // Fallback redirect if JavaScript is disabled
-      document.head.innerHTML += '<meta http-equiv="refresh" content="3; url=http://127.0.0.1:5500/project/auth/login.html" />';
+      document.head.innerHTML += '<meta http-equiv="refresh" content="3; url=../project/auth/login.html" />';
     </script>
   </body>
 </html>
